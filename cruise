@@ -1,0 +1,444 @@
+#!/usr/bin/env bash
+
+UNAMEOUT="$(uname -s)"
+
+# Verify operating system is supported...
+case "${UNAMEOUT}" in
+    Linux*)             MACHINE=linux;;
+    Darwin*)            MACHINE=mac;;
+    *)                  MACHINE="UNKNOWN"
+esac
+
+if [ "$MACHINE" == "UNKNOWN" ]; then
+    echo "Unsupported operating system [$(uname -s)]. Cruise supports macOS, Linux, and Windows (WSL2)." >&2
+
+    exit 1
+fi
+
+# Determine if stdout is a terminal...
+if test -t 1; then
+    # Determine if colors are supported...
+    ncolors=$(tput colors)
+
+    if test -n "$ncolors" && test "$ncolors" -ge 8; then
+        BOLD="$(tput bold)"
+        RED="$(tput setaf 1)"
+        GREEN="$(tput setaf 2)"
+        YELLOW="$(tput setaf 3)"
+        CYAN="$(tput setaf 6)"
+        NC="$(tput sgr0)"
+    fi
+fi
+
+# Function that prints the available commands...
+function display_help {
+    echo "Cruise"
+    echo
+    echo "${YELLOW}Usage:${NC}" >&2
+    echo "  cruise COMMAND [options] [arguments]"
+    echo
+    echo "Unknown commands are passed to the docker binary."
+    echo
+    echo "${YELLOW}Commands:${NC}"
+    echo "  ${GREEN}build${NC}               Build the cruise image"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${NC}-f${NC}                   Rebuild from scratch"
+    echo "  ${GREEN}start${NC}               Start the application"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${NC}-p <port>${NC}            Specify a port to listen (Default: 80)"
+    echo "    ${NC}-e <port:port>${NC}       Specify local port to container port (i.e. 3000:3000)"
+    echo "    ${NC}-s <server>${NC}          Specify a server (i.e. nginx|octane)"
+    echo "    ${NC}-b${NC}                   Run in the background"
+    echo "  ${GREEN}stop${NC}                Stop the application"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${NC}-f${NC}                   Stop the application and remove the container"
+    echo "  ${GREEN}restart${NC}             Restart the application"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "  ${GREEN}create${NC}              Create a Laravel project in the folder"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "  ${GREEN}shell${NC}               Start a shell in the folder"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "  ${GREEN}export${NC}              Backup a cruise image as .tar"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "  ${GREEN}import${NC}              Import a cruise image from provided path"
+    echo "  ${GREEN}remove${NC}              Remove a built cruise image"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo
+    echo "  ${GREEN}install${NC}             Install cruise binary"
+    echo "  ${GREEN}uninstall${NC}           Uninstall cruise binary"
+    echo "  ${GREEN}version${NC}             Show available image versions for use"
+
+    exit 1
+}
+
+# Proxy the "help" command...
+if [ $# -gt 0 ]; then
+    if [ "$1" == "help" ] || [ "$1" == "-h" ] || [ "$1" == "-help" ] || [ "$1" == "--help" ]; then
+        display_help
+    fi
+else
+    display_help
+fi
+
+# Function that outputs Cruise is not running...
+function cruise_is_not_running {
+    echo "${BOLD}Cruise is not running for this project.${NC}" >&2
+    echo "" >&2
+    echo "${BOLD}You may run Cruise using the following commands:${NC} 'cruise start' or 'cruise start -b'" >&2
+
+    exit 1
+}
+
+# Function that outputs Invalid arguments provided...
+function invalid_arguments_provided {
+    echo "${BOLD}Invalid arguments provided.${NC}" >&2
+
+    exit 1
+}
+
+# Ensure that Docker is running...
+if ! docker info > /dev/null 2>&1; then
+    echo "${BOLD}Docker is not running.${NC}" >&2
+
+    exit 1
+fi
+
+CRUISE_DIRECTORY="$HOME/.cruise"
+
+# Source the ".defaults" file for environment variables...
+if [ -f "$CRUISE_DIRECTORY/.defaults" ]; then
+    source "$CRUISE_DIRECTORY/.defaults"
+fi
+
+# Define environment variables...
+CRUISE_DEBUG_ENABLED=$CRUISE_DEBUG_ENABLED
+IMAGE_VERSION=$DEFAULT_IMAGE_VERSION
+NETWORK=$DEFAULT_NETWORK
+
+# Define global parameters...
+CONTAINER_NAME=${PWD##*/}-cruise-$IMAGE_VERSION-dev
+WORKING_DIRECTORY=/var/www/html
+SERVER="nginx"
+SERVER_ROOT=/var/www/html/public
+SERVER_PORT=80
+EXPOSE_PORTS=()
+ENTRYPOINT=bash
+
+# Check if the network exist for the containers...
+if [ ! "$(docker network ls | grep $NETWORK)" ]; then
+    echo "${BOLD}Application network doesn't exist.${NC}" >&2
+    echo "${BOLD}Creating network $NETWORK...${NC}" >&2
+
+    docker network create laravel
+
+    echo "${GREEN}Created network $NETWORK.${NC}" >&2
+fi
+
+ARGS=()
+
+# Install cruise binary...
+if [ "$1" == "install" ]; then
+    shift 1
+
+    # Check if cruise binary is not installed...
+    if ! type cruise > /dev/null 2>&1; then
+        echo "${BOLD}Installing cruise binary...${NC}" >&2
+
+        sudo ln -sf "$CRUISE_DIRECTORY/cruise" /usr/local/bin/cruise
+
+        if [ "$?" == 0 ]; then
+            echo "${GREEN}Installation successful!${NC}" >&1
+        else
+            echo "${RED}Installation failed!${NC}" >&2
+        fi
+    else
+        echo "${BOLD}Cruise binary is already installed.${NC}" >&2
+    fi
+    
+    exit 1
+
+# Uninstall the application image and cruise binary...
+elif [ "$1" == "uninstall" ]; then
+    shift 1
+
+    echo "${YELLOW}Uninstall cruise binary from your system (y/n)?${NC}"
+    read confirm
+
+    if [ "$confirm" == "y" ]; then
+        # Check if cruise binary is already installed...
+        if type cruise > /dev/null 2>&1; then
+            # Check if cruise binary is installed...
+            if type cruise > /dev/null 2>&1 || [ "$fresh_install" ]; then
+                echo "${BOLD}Cruise binary is found.${NC}" >&1
+                echo "${BOLD}Uninstalling cruise binary...${NC}" >&1
+
+                sudo rm /usr/local/bin/cruise
+
+                if [ "$?" == 0 ]; then
+                    echo "${GREEN}Uninstall successful!${NC}" >&1
+                else
+                    echo "${RED}Cannot uninstall binary. Manually remove the binary from '/usr/local/bin/cruise'${NC}" >&2
+                fi
+            else
+                echo "${BOLD}Cruise binary is not installed.${NC}" >&2
+            fi
+        fi
+    else
+        echo "${GREEN}Uninstall cancelled!${NC}" >&1
+    fi
+
+    exit 1
+
+# Build the application image...
+elif [ "$1" == "build" ]; then
+    shift 1
+
+    while getopts v:f OPTION; do
+        case $OPTION in
+            v) IMAGE_VERSION=${OPTARG};;
+            f) fresh_install="--no-cache";; # Append --no-cache if provided
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    echo "${GREEN}Building image with following parameters...${NC}" >&1
+    echo "${BOLD}v) $IMAGE_VERSION${NC}" >&1
+    echo "${BOLD}f) $fresh_install${NC}" >&1
+    echo "${GREEN}Base image name will be${NC} cruise-$IMAGE_VERSION:latest" >&1
+    echo "" >&1
+    
+    ARGS+=(build -f $CRUISE_DIRECTORY/docker/$IMAGE_VERSION/Dockerfile -t cruise-$IMAGE_VERSION:latest $CRUISE_DIRECTORY/docker/$IMAGE_VERSION/ $fresh_install)
+
+# Show available image versions...
+elif [ "$1" == "version" ]; then
+    shift 1
+
+    echo "${GREEN}Available versions to use...${NC}" >&1
+    ls ~/.cruise/docker
+    echo "" >&1
+
+    exit 1    
+
+# Backup the application image for using offline...
+elif [ "$1" == "export" ]; then
+    shift 1
+
+    while getopts v: OPTION; do
+        case $OPTION in
+            v) IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    echo "${GREEN}Exporting image with following parameters...${NC}" >&1
+    echo "${BOLD}v) $IMAGE_VERSION${NC}" >&1
+    echo "${GREEN}Creating backup in ~/.cruise/backup/cruise-$IMAGE_VERSION.tar${NC}" >&1
+    echo "${GREEN}Please wait..." >&1
+    echo "" >&1
+    
+    mkdir -p ~/.cruise/backup
+    ARGS+=(image save -o ~/.cruise/backup/cruise-$IMAGE_VERSION.tar cruise-$IMAGE_VERSION:latest)
+
+# Import backed up application image...
+elif [ "$1" == "import" ]; then
+    shift 1
+
+    # Check if argument provided
+    if [ -z "$1" ]; then
+        echo "${RED}Backup path not provided${NC}" >&2
+
+        exit 1
+    fi
+
+    # Check if file exists in the provided path
+    if [ ! -f "$1" ]; then
+        echo "${RED}Backup not found at $1${NC}" >&2
+
+        exit 1
+    fi
+    
+    echo "${GREEN}Importing image from $1${NC}" >&1
+    echo "${GREEN}Please wait..." >&1
+    echo "" >&1
+    
+    ARGS+=(image load -i "$1")
+
+# Remove the application build image...
+elif [ "$1" == "remove" ]; then
+    shift 1
+
+    while getopts v: OPTION; do
+        case $OPTION in
+            v) IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    ARGS+=(rmi cruise-$IMAGE_VERSION:latest)
+
+elif [ "$1" == "start" ]; then
+    shift 1
+
+    while getopts p:e:n:v:s:b OPTION; do
+        case $OPTION in
+            e) EXPOSE_PORTS+=(${OPTARG});;
+            n) NETWORK=${OPTARG};;
+            p) SERVER_PORT=${OPTARG};;
+            s) SERVER=${OPTARG};;
+            v) IMAGE_VERSION=${OPTARG};;
+            b) background="yes";;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    if [ $IMAGE_VERSION ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+    fi
+
+    # Check if there is already any container running with the same name...
+    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        # If container is running, then bash into it...
+        ARGS+=(exec -it $CONTAINER_NAME zsh)
+    elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
+        # If container exist, then start it...
+        ARGS+=(start $CONTAINER_NAME)
+    else
+        if [ "$SERVER" == "octane" ]; then
+            ENTRYPOINT="start-server octane"
+        elif [ "$SERVER" == "nginx" ]; then
+            ENTRYPOINT="start-server"
+        fi
+
+        # If none of the above, run the image with parameters...
+        if [ "$background" == "yes" ]; then
+            ARGS+=(run -d --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $NETWORK --add-host host.docker.internal:host-gateway -p $SERVER_PORT:80 ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        else
+            ARGS+=(run --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $NETWORK --add-host host.docker.internal:host-gateway -p $SERVER_PORT:80 ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        fi
+    fi
+
+# Stop the application container...
+elif [ "$1" == "stop" ]; then
+    shift 1
+
+    while getopts v:f OPTION; do
+        case $OPTION in
+            v) IMAGE_VERSION=${OPTARG};;
+            f) full="yes";;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    if [ $IMAGE_VERSION ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+    fi
+
+    # Check if there is already any container running with the same name...
+    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        if [ "$full" == "yes" ]; then
+            ARGS+=(rm -f $CONTAINER_NAME)
+        else
+            ARGS+=(stop $CONTAINER_NAME)
+        fi
+    else
+        cruise_is_not_running
+    fi
+
+# Restart the application container...
+elif [ "$1" == "restart" ]; then
+    shift 1
+
+    while getopts v: OPTION; do
+        case $OPTION in
+            v) IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    if [ $IMAGE_VERSION ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+    fi
+
+    # Check if there is already any container running with the same name...
+    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        ARGS+=(restart $CONTAINER_NAME)
+    else
+        cruise_is_not_running
+    fi
+
+# Initiate a root user Bash shell within the application container...
+elif [ "$1" == "shell" ]; then
+    shift 1
+
+    while getopts e:n:v: OPTION; do
+        case $OPTION in
+            e) EXPOSE_PORTS+=(${OPTARG});;
+            n) NETWORK=${OPTARG};;
+            v) IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    if [ $IMAGE_VERSION ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+    fi
+
+    # Check if there is already any container running with the same name...
+    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        ARGS+=(exec -it $CONTAINER_NAME zsh)
+    else
+        # Check if there is already container with same name
+        if [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
+            cruise_is_not_running
+        fi
+
+        ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest zsh)
+    fi
+
+# Create a Laravel project...
+elif [ "$1" == "create" ]; then
+    shift 1
+
+    while getopts v: OPTION; do
+        case $OPTION in
+            v) IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    # Check if argument provided
+    if [ -z "$1" ]; then
+        echo "${RED}Project name missing${NC}" >&2
+
+        exit 1
+    fi
+
+    if [ $IMAGE_VERSION ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+    fi
+
+    # Check if there is already any container running with the same name...
+    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        ARGS+=(exec -it $CONTAINER_NAME composer create-project laravel/laravel ${@:$OPTIND:1})
+    else
+        # Check if there is already container with same name
+        if [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
+            cruise_is_not_running
+        fi
+
+        ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel ${@:$OPTIND:1})
+    fi
+
+# Pass unknown commands to the "docker" binary...
+else
+    ARGS+=("$@")
+fi
+
+# Print the generated docker command when debug is enabled...
+if [ "$CRUISE_DEBUG_ENABLED" == "yes" ]; then
+    echo "${CYAN}docker ${ARGS[@]}${NC}" >&1
+    echo "" >&1
+fi
+
+# Run Docker with the defined arguments...
+docker "${ARGS[@]}"
