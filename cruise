@@ -122,7 +122,7 @@ SERVER="nginx"
 SERVER_ROOT=/var/www/html/public
 SERVER_PORT=80
 EXPOSE_PORTS=()
-ENTRYPOINT=bash
+ENTRYPOINT=zsh
 
 # Check if the network exist for the containers...
 if [ ! "$(docker network ls | grep $NETWORK)" ]; then
@@ -298,7 +298,7 @@ elif [ "$1" == "start" ]; then
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
         # If container is running, then bash into it...
-        ARGS+=(exec -it $CONTAINER_NAME zsh)
+        ARGS+=(exec -it $CONTAINER_NAME $ENTRYPOINT)
     elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
         # If container exist, then start it...
         ARGS+=(start $CONTAINER_NAME)
@@ -333,15 +333,16 @@ elif [ "$1" == "stop" ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
-    # Check if there is already any container running with the same name...
-    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
-        if [ "$full" == "yes" ]; then
-            ARGS+=(rm -f $CONTAINER_NAME)
-        else
-            ARGS+=(stop $CONTAINER_NAME)
-        fi
+    # Remove the container if -f option provided
+    if [ "$full" == "yes" ]; then
+        ARGS+=(rm -f $CONTAINER_NAME)
     else
-        cruise_is_not_running
+        # Check if there is already any container running with the same name...
+        if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+            ARGS+=(stop $CONTAINER_NAME)
+        else
+            cruise_is_not_running
+        fi
     fi
 
 # Restart the application container...
@@ -385,14 +386,14 @@ elif [ "$1" == "shell" ]; then
 
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
-        ARGS+=(exec -it $CONTAINER_NAME zsh)
+        ARGS+=(exec -it $CONTAINER_NAME $ENTRYPOINT)
     else
         # Check if there is already container with same name
         if [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
             cruise_is_not_running
         fi
 
-        ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest zsh)
+        ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
     fi
 
 # Create a Laravel project...

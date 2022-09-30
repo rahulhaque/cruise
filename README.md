@@ -1,6 +1,6 @@
 # Laravel Cruise
 
-A highly opinionated Laravel Sail like implementation of docker that focuses more on freedom of the development environment rather than sticking to your per project docker configuration. This is a setup once and use anytime on any machine type approach to give the developer the portability of their development environment. Cruise assumes you've nothing installed in your system except docker and will provide everything in a bundled together portable environment.
+A highly opinionated Laravel Sail like implementation of docker that focuses more on freedom of the development environment rather than sticking to your per project docker configuration. This is a setup once and use anytime on any machine type approach to give the developer the portability of their development environment. Cruise assumes you've no development tools installed in your system except docker and will provide all the tools in a bundled together portable environment.
 
 ## Requirements
 
@@ -9,14 +9,15 @@ A highly opinionated Laravel Sail like implementation of docker that focuses mor
 ## Installation
 
 ```bash
-# Download the repo in in your home
-# directory `~/.cruise` folder
+# Download or clone the repo in your home
+# directory inside `~/.cruise` folder
 git clone https://github.com/rahulhaque/laravel-cruise.git ~/.cruise
 
 # Install cruise by running `install` command
 ~/.cruise/cruise install
 
-# Run `cruise` for available commands
+# Run `cruise` to see available
+# commands and options
 cruise
 ```
 
@@ -58,39 +59,89 @@ cruise create -v 7.4 example-app
 
 ### 2. Running Existing Laravel Project
 
+Get inside the project directory and edit the `.env` environment file to redirect local resource calls from docker to your PC by replacing `127.0.0.1` with `host.docker.internal`. For example -
+```bash
+...
+DB_HOST=host.docker.internal
+...
+REDIS_HOST=host.docker.internal
+...
+MAIL_HOST=host.docker.internal
+...
+```
+
+This will allow `cruise` to connect to your local MySQL, Redis or Mailhog setup from the container. Now follow the next steps for the basics of `cruise`.
+
 ```bash
 # Open terminal in the project directory
-# To start the project with - Nginx
+# Run project with Nginx in background
+# Visit `http://localhost`
 cruise start -b
 
-# To start the project with - Octane
+# Or
+# Run project with Nginx + Octane in background
+# Visit `http://localhost`
 cruise start -s octane -b
+
+# Or
+# Define port to run on
+# Visit `http://localhost:8080`
+cruise start -s octane -b -p 8080
 
 # Run the same command again or `cruise shell`
 # to drop inside the running project and
 # use it however you like
 cruise shell
 
-# Logout from the shell or press `ctrl+d`
+# Logout from the shell 
+# or press `ctrl+d`
 logout
 
 # Stop the running project while keeping
 # the changes in the container
 cruise stop
 
-# Stop the running project discarding
-# the changes in the container
+# Stop the running project discarding the
+# changes and removing the container
 cruise stop -f
 ```
 
+#### Vite Configuration
+
+If you plan to use Laravel Mix, Vite, Inertia, Vue or React, make sure to expose related ports with `-e <local_port>:<container_port>` option so that they can be accessible. Disable any ad-blocker on local development sites as they sometime block vite server and throws `net::ERR_BLOCKED_BY_CLIENT` error.
+
+```bash
+# Vite users start the project with
+cruise start -b -e 5173:5173
+
+# Edit the `vite.config.js` and
+# add the following in the root
+export default defineConfig({
+    server: {
+        host: '0.0.0.0'
+    },
+    ...
+}
+
+# Drop inside the running project 
+# with `cruise shell` and
+# start the vite server
+npm run dev
+```
+
+If you've defined a version when starting a project with `-v` option, like - `cruise start -v 7.4 -b`. Then you must also do the same for running other Cruise commands as well for that project, such as - `cruise shell -v 7.4` or `cruise stop -v 7.4`.
+
 ### 3. Other Developments
 
-You can use Cruise to do any development of your choice as long as the tools support. Simply run `cruise shell` anywhere to get the development shell up with all the tools available to you. While Cruise provides out of the box support for Laravel, it is not bound to only Laravel development. Use it to your heart's content.
+You can use Cruise to do any development of your choice as long as the tools support. Simply run `cruise shell` anywhere to get the temporary development shell up with all the tools available to you. You can also start the server from shell mode. Just run `start-server` inside the shell and it will start PHP-FPM and Nginx for you. By default no port is exposed for temporary shell session. To bind any available port from your PC to any port inside the shell, run `cruise shell` with `-e` option, such as - `cruise shell -e 8080:80`. While Cruise provides out of the box support for Laravel applications, it is not bound to only Laravel development. Fork it, customize it and use it however you like.    
+
+> **Note:** Any command unknown to Cruise will be passed to Docker.
 
 ## Customization
 
 A very good default is provided out of the box to handle most Laravel applications and PHP projects. If you still need to change anything, configure the dockerfile according to your need. There are two configurable docker files provided by default. Both can run regular Laravel application with both Nginx and Octane. They include the followings -
 
+- Ubuntu 22.04
 - Git
 - PHP
 - Composer
@@ -100,7 +151,7 @@ A very good default is provided out of the box to handle most Laravel applicatio
 - MS Fonts
 - Wkhtmltopdf (qt patched)
 - Wkhtmltoimage (qt patched)
-- Oh-my-zsh with necessary plugins
+- Oh-my-zsh with auto-suggestions plugin
 
 Edit the dockerfile in `~/.cruise/docker` directory if default is not what you're looking for. Then rebuild the image again with `-f` option like - `cruise build -v 8.1 -f`.
 
