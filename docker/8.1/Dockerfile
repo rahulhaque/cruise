@@ -2,6 +2,8 @@ FROM ubuntu:22.04
 
 LABEL maintainer="Rahul Haque"
 
+ARG WWWGROUP
+ARG WWWUSER
 ARG NODE_VERSION=16
 
 WORKDIR /var/www/html
@@ -53,8 +55,10 @@ RUN apt-get install -y libxext6 libxrender1 xfonts-base xfonts-75dpi \
     && fc-cache -fv
 
 RUN apt-get install -y git zsh \
+    && export HOME=/home/cruise \
     && sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" --unattended \
     && git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions \
+    && zsh -i -c 'zstyle ":omz:update" mode disabled' \
     && zsh -i -c 'omz theme set steeef' \
     && zsh -i -c 'omz plugin enable laravel composer zsh-autosuggestions'
 
@@ -63,6 +67,10 @@ RUN apt-get -y autoremove \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.1
+
+RUN groupadd --force -g $WWWGROUP cruise \
+    && useradd -s /bin/bash --no-create-home --no-user-group -g $WWWGROUP -u $WWWUSER cruise \
+    && chown -R $WWWUSER:$WWWGROUP /home/cruise
 
 COPY start-server /usr/local/bin/start-server
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf

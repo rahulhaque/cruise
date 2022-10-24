@@ -58,6 +58,8 @@ function display_help {
     echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
     echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "  ${GREEN}root-shell${NC}          Start a root shell in the folder"
+    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
     echo "  ${GREEN}export${NC}              Backup a cruise image as .tar"
     echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
     echo "  ${GREEN}import${NC}              Import a cruise image from provided path"
@@ -207,7 +209,7 @@ elif [ "$1" == "build" ]; then
     echo "${GREEN}Base image name will be${NC} cruise-$IMAGE_VERSION:latest" >&1
     echo "" >&1
     
-    ARGS+=(build -f $CRUISE_DIRECTORY/docker/$IMAGE_VERSION/Dockerfile -t cruise-$IMAGE_VERSION:latest $CRUISE_DIRECTORY/docker/$IMAGE_VERSION/ $fresh_install)
+    ARGS+=(build --build-arg WWWGROUP=$(id -g) --build-arg WWWUSER=$(id -u) -f $CRUISE_DIRECTORY/docker/$IMAGE_VERSION/Dockerfile -t cruise-$IMAGE_VERSION:latest $CRUISE_DIRECTORY/docker/$IMAGE_VERSION/ $fresh_install)
 
 # Show available image versions...
 elif [ "$1" == "version" ]; then
@@ -298,7 +300,7 @@ elif [ "$1" == "start" ]; then
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
         # If container is running, then bash into it...
-        ARGS+=(exec -it $CONTAINER_NAME $ENTRYPOINT)
+        ARGS+=(exec -u cruise -it $CONTAINER_NAME $ENTRYPOINT)
     elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
         # If container exist, then start it...
         ARGS+=(start $CONTAINER_NAME)
@@ -367,7 +369,7 @@ elif [ "$1" == "restart" ]; then
         cruise_is_not_running
     fi
 
-# Initiate a root user Bash shell within the application container...
+# Initiate a user zsh shell within the application container...
 elif [ "$1" == "shell" ]; then
     shift 1
 
@@ -379,6 +381,37 @@ elif [ "$1" == "shell" ]; then
             *) invalid_arguments_provided;;
         esac
     done
+
+    if [ $IMAGE_VERSION ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+    fi
+
+    # Check if there is already any container running with the same name...
+    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        ARGS+=(exec -u cruise -it $CONTAINER_NAME $ENTRYPOINT)
+    else
+        # Check if there is already container with same name
+        if [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
+            cruise_is_not_running
+        fi
+
+        ARGS+=(run -u cruise -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+    fi
+
+# Initiate a root user bash shell within the application container...
+elif [ "$1" == "root-shell" ]; then
+    shift 1
+
+    while getopts e:n:v: OPTION; do
+        case $OPTION in
+            e) EXPOSE_PORTS+=(${OPTARG});;
+            n) NETWORK=${OPTARG};;
+            v) IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    ENTRYPOINT=bash
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
