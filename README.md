@@ -133,13 +133,58 @@ If you've defined a version when starting a project with `-v` option, like - `cr
 
 ### 3. Other Developments
 
-You can use Cruise to do any development of your choice as long as the tools support. Simply run `cruise shell` anywhere to get the temporary development shell up with all the tools available to you. You can also start the server from shell mode. Just run `start-server` inside the shell and it will start PHP-FPM and Nginx for you. By default no port is exposed for temporary shell session. To bind any available port from your PC to any port inside the shell, run `cruise shell` with `-e` option, such as - `cruise shell -e 8080:80`. While Cruise provides out of the box support for Laravel applications, it is not bound to only Laravel development. Fork it, customize it and use it however you like.    
+You can use Cruise to do any development of your choice as long as the internal tools support. Simply run `cruise shell` anywhere to get the temporary development shell up with all the tools available to you. You can also start the server from shell mode. Just run `start-server` inside the shell and it will start PHP-FPM and Nginx for you. By default no port is exposed for temporary shell session. To bind any available port from your PC to any port inside the shell, run `cruise shell` with `-e` option, such as - `cruise shell -e 8080:80`. While Cruise provides out of the box support for Laravel applications, it is not bound to only Laravel development. Fork it, customize it and use it however you like.    
 
 > **Note:** Any command unknown to Cruise will be passed to Docker.
 
+#### React Development Example
+
+A basic react application creation and setup process example with Cruise is given below -
+
+```bash
+# Open terminal in the project directory
+# Run `cruise shell` to open temporary
+# shell and create your react project
+npx create-react-app example-app
+
+# Logout from the shell 
+# or press `ctrl+d`
+logout
+
+# Get inside the app directory
+# Run `cruise shell` exposing
+# the port 3000 for React
+cruise shell -e 3000:3000
+
+# Run the app with `npm start`
+# Visit `http://localhost:3000`
+npm start
+
+# Or keep the app running in the
+# background for easier access
+cruise start -b -e 3000:3000 -p "" -c "npm start"
+
+# Run the same command again or `cruise shell`
+# to drop inside the running project and
+# use it however you like
+cruise shell
+
+# Logout from the shell 
+# or press `ctrl+d`
+logout
+
+# Stop the running project while keeping
+# the changes in the container
+cruise stop
+
+# Stop the running project discarding the
+# changes and removing the container
+cruise stop -f
+```
+
 ## Customization
 
-A very good default is provided out of the box to handle most Laravel applications and PHP projects. If you still need to change anything, configure the dockerfile according to your need. There are two configurable docker files provided by default. Both can run regular Laravel application with both Nginx and Octane. They include the followings -
+A very good default is provided out of the box to handle most Laravel applications and PHP projects. If you still need to change anything, configure the dockerfile according to your need. There are two configurable docker environments provided by default. Both can run regular Laravel application with both Nginx and Octane. They include the followings -
 
 - Ubuntu 22.04
 - Git
@@ -153,7 +198,7 @@ A very good default is provided out of the box to handle most Laravel applicatio
 - Wkhtmltoimage (qt patched)
 - Oh-my-zsh with auto-suggestions plugin
 
-Edit the dockerfile in `~/.cruise/docker` directory if default is not what you're looking for. Then rebuild the image again with `-f` option like - `cruise build -v 8.1 -f`.
+Edit the dockerfile in `~/.cruise/environments` directory if default is not what you're looking for. Then rebuild the image again with `-f` option like - `cruise build -v 8.1 -f`.
 
 ## Backstory
 
