@@ -97,7 +97,7 @@ cruise shell
 # or press `ctrl+d`
 logout
 
-# Stop the running project while keeping
+# Stop the running project keeping
 # the changes in the container
 cruise stop
 
@@ -142,38 +142,30 @@ You can use Cruise to do any development of your choice as long as the internal 
 A basic react application creation and setup process example with Cruise is given below -
 
 ```bash
-# Open terminal in the project directory
-# Run `cruise shell` to open temporary
-# shell and create your react project
-npx create-react-app example-app
+# Create the react project directory and open
+# a terminal inside the project directory
+# Run this to start a cruise shell
+cruise shell -b -e 3000:3000
+# `-b` to keep the container for reuse
+# `-e` to open the ports for React
 
-# Logout from the shell 
-# or press `ctrl+d`
-logout
+# Run the same command again or `cruise shell`
+# to drop inside the running shell
+cruise shell
 
-# Get inside the app directory
-# Run `cruise shell` exposing
-# the port 3000 for React
-cruise shell -e 3000:3000
+# Create your react project
+npx create-react-app .
 
 # Run the app with `npm start`
 # Visit `http://localhost:3000`
 npm start
 
-# Or keep the app running in the
-# background for easier access
-cruise start -b -e 3000:3000 -p "" -c "npm start"
-
-# Run the same command again or `cruise shell`
-# to drop inside the running project and
-# use it however you like
-cruise shell
-
-# Logout from the shell 
+# Logout from the shell
 # or press `ctrl+d`
+# after done
 logout
 
-# Stop the running project while keeping
+# Stop the running project keeping
 # the changes in the container
 cruise stop
 

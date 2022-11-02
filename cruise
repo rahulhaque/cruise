@@ -15,6 +15,19 @@ if [ "$MACHINE" == "UNKNOWN" ]; then
     exit 1
 fi
 
+CRUISE_DIRECTORY="$HOME/.cruise"
+
+# Source the ".config" file for environment variables...
+if [ -f "$CRUISE_DIRECTORY/.config" ]; then
+    source "$CRUISE_DIRECTORY/.config"
+fi
+
+# Define global parameters...
+IMAGE_VERSION=$DEFAULT_IMAGE_VERSION
+CONTAINER_NAME=$CONTAINER_NAME_PATTERN
+SERVER="nginx"
+EXPOSE_PORTS=()
+
 # Determine if stdout is a terminal...
 if test -t 1; then
     # Determine if colors are supported...
@@ -41,35 +54,42 @@ function display_help {
     echo
     echo "${YELLOW}Commands:${NC}"
     echo "  ${GREEN}build${NC}               Build the cruise image"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
-    echo "    ${NC}-f${NC}                   Rebuild from scratch"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-f${NC}                 Rebuild from scratch"
     echo "  ${GREEN}start${NC}               Start the application"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
-    echo "    ${NC}-p <port>${NC}            Specify a port to listen (Default: 80)"
-    echo "    ${NC}-e <port:port>${NC}       Specify local port to container port (i.e. 3000:3000)"
-    echo "    ${NC}-c <command>${NC}         Specify a command for startup (Overrides -s option)"
-    echo "    ${NC}-s <server>${NC}          Specify a server (i.e. nginx|octane)"
-    echo "    ${NC}-b${NC}                   Run in the background"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-p <port>${NC}          Specify a port to listen (Default: ${DEFAULT_PORT})"
+    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
+    echo "    ${BOLD}-c <command>${NC}       Specify a command for startup (Overrides -s option)"
+    echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
+    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}stop${NC}                Stop the application"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
-    echo "    ${NC}-f${NC}                   Stop the application and remove the container"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-f${NC}                 Stop the application and remove the container"
     echo "  ${GREEN}restart${NC}             Restart the application"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}create${NC}              Create a Laravel project in the folder"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
+    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}root-shell${NC}          Start a root shell in the folder"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
+    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}export${NC}              Backup a cruise image as .tar"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}import${NC}              Import a cruise image from provided path"
     echo "  ${GREEN}remove${NC}              Remove a built cruise image"
-    echo "    ${NC}-v <version>${NC}         Specify a version (Default: latest)"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo
     echo "  ${GREEN}install${NC}             Install cruise binary"
     echo "  ${GREEN}uninstall${NC}           Uninstall cruise binary"
-    echo "  ${GREEN}version${NC}             Show available image versions for use"
+    echo "  ${GREEN}environments${NC}        Show available environments for use"
 
     exit 1
 }
@@ -85,9 +105,8 @@ fi
 
 # Function that outputs Cruise is not running...
 function cruise_is_not_running {
-    echo "${BOLD}Cruise is not running for this project.${NC}" >&2
-    echo "" >&2
-    echo "${BOLD}You may run Cruise using the following commands:${NC} 'cruise start' or 'cruise start -b'" >&2
+    echo "${YELLOW}Cruise is not running for this location or project.${NC}" >&2
+    echo "${YELLOW}You may run Cruise using:${NC} ${GREEN}cruise start${NC}" >&2
 
     exit 1
 }
@@ -105,19 +124,6 @@ if ! docker info > /dev/null 2>&1; then
 
     exit 1
 fi
-
-CRUISE_DIRECTORY="$HOME/.cruise"
-
-# Source the ".config" file for environment variables...
-if [ -f "$CRUISE_DIRECTORY/.config" ]; then
-    source "$CRUISE_DIRECTORY/.config"
-fi
-
-# Define global parameters...
-IMAGE_VERSION=$DEFAULT_IMAGE_VERSION
-CONTAINER_NAME=$CONTAINER_NAME_PATTERN
-SERVER="nginx"
-EXPOSE_PORTS=()
 
 # Check if the network exist for the containers...
 if [ ! "$(docker network ls | grep $DEFAULT_NETWORK)" ]; then
@@ -205,7 +211,7 @@ elif [ "$1" == "build" ]; then
     ARGS+=(build --build-arg WWWGROUP=$(id -g) --build-arg WWWUSER=$(id -u) -f $CRUISE_DIRECTORY/environments/$IMAGE_VERSION/Dockerfile -t cruise-$IMAGE_VERSION:latest $CRUISE_DIRECTORY/environments/$IMAGE_VERSION/ $fresh_install)
 
 # Show available image versions...
-elif [ "$1" == "version" ]; then
+elif [ "$1" == "environments" ]; then
     shift 1
 
     echo "${GREEN}Available environments to use...${NC}" >&1
@@ -377,11 +383,12 @@ elif [ "$1" == "restart" ]; then
 elif [ "$1" == "shell" ]; then
     shift 1
 
-    while getopts e:n:v: OPTION; do
+    while getopts e:n:v:b OPTION; do
         case $OPTION in
             e) EXPOSE_PORTS+=(${OPTARG});;
             n) DEFAULT_NETWORK=${OPTARG};;
             v) IMAGE_VERSION=${OPTARG};;
+            b) background="yes";;
             *) invalid_arguments_provided;;
         esac
     done
@@ -399,18 +406,23 @@ elif [ "$1" == "shell" ]; then
             cruise_is_not_running
         fi
 
-        ARGS+=(run -u cruise -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        if [ "$background" == "yes" ]; then
+            ARGS+=(run -d -u cruise -it --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        else
+            ARGS+=(run -u cruise -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        fi
     fi
 
 # Initiate a root user bash shell within the application container...
 elif [ "$1" == "root-shell" ]; then
     shift 1
 
-    while getopts e:n:v: OPTION; do
+    while getopts e:n:v:b OPTION; do
         case $OPTION in
             e) EXPOSE_PORTS+=(${OPTARG});;
             n) DEFAULT_NETWORK=${OPTARG};;
             v) IMAGE_VERSION=${OPTARG};;
+            b) background="yes";;
             *) invalid_arguments_provided;;
         esac
     done
@@ -430,7 +442,11 @@ elif [ "$1" == "root-shell" ]; then
             cruise_is_not_running
         fi
 
-        ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        if [ "$background" == "yes" ]; then
+            ARGS+=(run -d -it --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        else
+            ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        fi
     fi
 
 # Create a Laravel project...
