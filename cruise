@@ -323,9 +323,9 @@ elif [ "$1" == "start" ]; then
 
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
-            ARGS+=(run -d --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
-            ARGS+=(run --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -407,9 +407,9 @@ elif [ "$1" == "shell" ]; then
         fi
 
         if [ "$background" == "yes" ]; then
-            ARGS+=(run -d -u cruise -it --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d -u cruise -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
-            ARGS+=(run -u cruise -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -u cruise -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -443,9 +443,9 @@ elif [ "$1" == "root-shell" ]; then
         fi
 
         if [ "$background" == "yes" ]; then
-            ARGS+=(run -d -it --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
-            ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -480,7 +480,7 @@ elif [ "$1" == "create" ]; then
             cruise_is_not_running
         fi
 
-        ARGS+=(run -it --rm --name $CONTAINER_NAME -v ${PWD}:$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel ${@:$OPTIND:1})
+        ARGS+=(run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel ${@:$OPTIND:1})
     fi
 
 # Pass unknown commands to the "docker" binary...
