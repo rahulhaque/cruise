@@ -58,9 +58,11 @@ RUN apt-get install -y git zsh \
     && export HOME=/home/cruise \
     && sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" --unattended \
     && git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions \
-    && zsh -i -c 'zstyle ":omz:update" mode disabled' \
     && zsh -i -c 'omz theme set steeef' \
-    && zsh -i -c 'omz plugin enable laravel composer zsh-autosuggestions'
+    && zsh -i -c 'omz plugin enable laravel composer zsh-autosuggestions' \
+    && sed -i "/zstyle ':omz:update' mode disabled/s/^#\s*//" $HOME/.zshrc \
+    && sed -i "3 i export PATH=./vendor/bin:\$PATH" $HOME/.zshrc \
+    && sed -i "4 i export PATH=\$HOME/.config/composer/vendor/bin:\$PATH" $HOME/.zshrc
 
 RUN apt-get -y autoremove \
     && apt-get clean \
