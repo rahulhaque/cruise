@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+                                                           
+complete -W "build start stop restart create shell root-shell export import remove install uninstall environments" cruise
+

@@ -146,6 +146,7 @@ if [ "$1" == "install" ]; then
         echo "${BOLD}Installing cruise binary...${NC}" >&2
 
         sudo ln -sf "$CRUISE_DIRECTORY/cruise" /usr/local/bin/cruise
+        sudo ln -sf "$CRUISE_DIRECTORY/cruise-completion" /etc/bash_completion.d/cruise-completion
 
         if [ "$?" == 0 ]; then
             echo "${GREEN}Installation successful!${NC}" >&1
@@ -155,7 +156,7 @@ if [ "$1" == "install" ]; then
     else
         echo "${BOLD}Cruise binary is already installed.${NC}" >&2
     fi
-    
+
     exit 1
 
 # Uninstall the application image and cruise binary...
@@ -174,6 +175,7 @@ elif [ "$1" == "uninstall" ]; then
                 echo "${BOLD}Uninstalling cruise binary...${NC}" >&1
 
                 sudo rm /usr/local/bin/cruise
+                sudo rm /etc/bash_completion.d/cruise-completion
 
                 if [ "$?" == 0 ]; then
                     echo "${GREEN}Uninstall successful!${NC}" >&1
@@ -207,7 +209,7 @@ elif [ "$1" == "build" ]; then
     echo "${BOLD}f) $fresh_install${NC}" >&1
     echo "${GREEN}Base image name will be${NC} cruise-$IMAGE_VERSION:latest" >&1
     echo "" >&1
-    
+
     ARGS+=(build --build-arg WWWGROUP=$(id -g) --build-arg WWWUSER=$(id -u) -f $CRUISE_DIRECTORY/environments/$IMAGE_VERSION/Dockerfile -t cruise-$IMAGE_VERSION:latest $CRUISE_DIRECTORY/environments/$IMAGE_VERSION/ $fresh_install)
 
 # Show available image versions...
@@ -218,7 +220,7 @@ elif [ "$1" == "environments" ]; then
     ls ~/.cruise/environments
     echo "" >&1
 
-    exit 1    
+    exit 1
 
 # Backup the application image for using offline...
 elif [ "$1" == "export" ]; then
@@ -236,7 +238,7 @@ elif [ "$1" == "export" ]; then
     echo "${GREEN}Creating backup in ~/.cruise/backup/cruise-$IMAGE_VERSION.tar${NC}" >&1
     echo "${GREEN}Please wait..." >&1
     echo "" >&1
-    
+
     mkdir -p ~/.cruise/backup
     ARGS+=(image save -o ~/.cruise/backup/cruise-$IMAGE_VERSION.tar cruise-$IMAGE_VERSION:latest)
 
@@ -257,11 +259,11 @@ elif [ "$1" == "import" ]; then
 
         exit 1
     fi
-    
+
     echo "${GREEN}Importing image from $1${NC}" >&1
     echo "${GREEN}Please wait..." >&1
     echo "" >&1
-    
+
     ARGS+=(image load -i "$1")
 
 # Remove the application build image...
