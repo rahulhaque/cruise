@@ -86,6 +86,7 @@ function display_help {
     echo "  ${GREEN}import${NC}              Import a cruise image from provided path"
     echo "  ${GREEN}remove${NC}              Remove a built cruise image"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-f${NC}                 Force remove the container"
     echo
     echo "  ${GREEN}install${NC}             Install cruise binary"
     echo "  ${GREEN}uninstall${NC}           Uninstall cruise binary"
@@ -118,22 +119,27 @@ function invalid_arguments_provided {
     exit 1
 }
 
-# Ensure that Docker is running...
-if ! docker info > /dev/null 2>&1; then
-    echo "${BOLD}Docker is not running.${NC}" >&2
+function check_if_docker_running {
+    # Ensure that Docker is running...
+    if ! docker info > /dev/null 2>&1; then
+        echo "${BOLD}Docker is not running.${NC}" >&2
 
-    exit 1
-fi
+        exit 1
+    fi
+}
 
-# Check if the network exist for the containers...
-if [ ! "$(docker network ls | grep $DEFAULT_NETWORK)" ]; then
-    echo "${BOLD}Application network doesn't exist.${NC}" >&2
-    echo "${BOLD}Creating network $DEFAULT_NETWORK...${NC}" >&2
+function check_if_network_exists {
+    # Check if the network exist for the containers...
+    if [ ! "$(docker network ls | grep $DEFAULT_NETWORK)" ]; then
+        echo "${BOLD}Application network doesn't exist.${NC}" >&2
+        echo "${BOLD}Creating network $DEFAULT_NETWORK...${NC}" >&2
 
-    docker network create laravel
+        docker network create $DEFAULT_NETWORK
 
-    echo "${GREEN}Created network $DEFAULT_NETWORK.${NC}" >&2
-fi
+        echo "${GREEN}Created network $DEFAULT_NETWORK.${NC}" >&2
+    fi
+}
+
 
 ARGS=()
 
@@ -144,6 +150,9 @@ if [ "$1" == "install" ]; then
     # Check if cruise binary is not installed...
     if ! type cruise > /dev/null 2>&1; then
         echo "${BOLD}Installing cruise binary...${NC}" >&2
+
+        check_if_docker_running
+        check_if_network_exists
 
         sudo ln -sf "$CRUISE_DIRECTORY/cruise" /usr/local/bin/cruise
         sudo ln -sf "$CRUISE_DIRECTORY/cruise-completion" /etc/bash_completion.d/cruise-completion
@@ -176,6 +185,7 @@ elif [ "$1" == "uninstall" ]; then
 
                 sudo rm /usr/local/bin/cruise
                 sudo rm /etc/bash_completion.d/cruise-completion
+                docker network rm $DEFAULT_NETWORK
 
                 if [ "$?" == 0 ]; then
                     echo "${GREEN}Uninstall successful!${NC}" >&1
@@ -203,6 +213,9 @@ elif [ "$1" == "build" ]; then
             *) invalid_arguments_provided;;
         esac
     done
+
+    check_if_docker_running
+    check_if_network_exists
 
     echo "${GREEN}Building image with following parameters...${NC}" >&1
     echo "${BOLD}v) $IMAGE_VERSION${NC}" >&1
@@ -233,6 +246,9 @@ elif [ "$1" == "export" ]; then
         esac
     done
 
+    check_if_docker_running
+    check_if_network_exists
+
     echo "${GREEN}Exporting image with following parameters...${NC}" >&1
     echo "${BOLD}v) $IMAGE_VERSION${NC}" >&1
     echo "${GREEN}Creating backup in ~/.cruise/backup/cruise-$IMAGE_VERSION.tar${NC}" >&1
@@ -260,6 +276,9 @@ elif [ "$1" == "import" ]; then
         exit 1
     fi
 
+    check_if_docker_running
+    check_if_network_exists
+
     echo "${GREEN}Importing image from $1${NC}" >&1
     echo "${GREEN}Please wait..." >&1
     echo "" >&1
@@ -270,14 +289,22 @@ elif [ "$1" == "import" ]; then
 elif [ "$1" == "remove" ]; then
     shift 1
 
-    while getopts v: OPTION; do
+    while getopts v:f OPTION; do
         case $OPTION in
             v) IMAGE_VERSION=${OPTARG};;
+            f) full="yes";;
             *) invalid_arguments_provided;;
         esac
     done
 
-    ARGS+=(rmi cruise-$IMAGE_VERSION:latest)
+    check_if_docker_running
+    check_if_network_exists
+
+    if [ "$full" == "yes" ]; then
+        ARGS+=(rmi -f cruise-$IMAGE_VERSION:latest)
+    else
+        ARGS+=(rmi cruise-$IMAGE_VERSION:latest)
+    fi
 
 elif [ "$1" == "start" ]; then
     shift 1
@@ -294,6 +321,9 @@ elif [ "$1" == "start" ]; then
             *) invalid_arguments_provided;;
         esac
     done
+
+    check_if_docker_running
+    check_if_network_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
@@ -343,6 +373,9 @@ elif [ "$1" == "stop" ]; then
         esac
     done
 
+    check_if_docker_running
+    check_if_network_exists
+
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
@@ -370,6 +403,9 @@ elif [ "$1" == "restart" ]; then
         esac
     done
 
+    check_if_docker_running
+    check_if_network_exists
+
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
@@ -394,6 +430,9 @@ elif [ "$1" == "shell" ]; then
             *) invalid_arguments_provided;;
         esac
     done
+
+    check_if_docker_running
+    check_if_network_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
@@ -429,6 +468,9 @@ elif [ "$1" == "root-shell" ]; then
         esac
     done
 
+    check_if_docker_running
+    check_if_network_exists
+
     ENTRYPOINT=bash
 
     if [ $IMAGE_VERSION ]; then
@@ -461,6 +503,9 @@ elif [ "$1" == "create" ]; then
             *) invalid_arguments_provided;;
         esac
     done
+
+    check_if_docker_running
+    check_if_network_exists
 
     # Check if argument provided
     if [ -z "$1" ]; then
