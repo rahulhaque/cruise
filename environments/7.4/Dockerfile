@@ -79,6 +79,7 @@ COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY php.ini /etc/php/7.4/cli/conf.d/99-php.ini
 COPY php.ini /etc/php/7.4/fpm/conf.d/99-php.ini
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN rm /etc/nginx/sites-enabled/default
 RUN chmod +x /usr/local/bin/start-server
 
 EXPOSE 80

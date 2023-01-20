@@ -14,7 +14,7 @@ ENV TZ=UTC
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update \
-    && apt-get install -y gnupg gosu curl nano fontconfig nginx ca-certificates \ 
+    && apt-get install -y gnupg gosu curl nano fontconfig nginx ca-certificates \
        zip unzip supervisor sqlite3 libcap2-bin libpng-dev python2 apt-utils \
     && mkdir -p ~/.gnupg \
     && chmod 600 ~/.gnupg \
@@ -81,6 +81,7 @@ COPY php.ini /etc/php/8.1/cli/conf.d/99-php.ini
 COPY php.ini /etc/php/8.1/fpm/conf.d/99-php.ini
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx.octane.conf /etc/nginx/conf.d/octane.conf.bak
+RUN rm /etc/nginx/sites-enabled/default
 RUN chmod +x /usr/local/bin/start-server
 
 EXPOSE 80
