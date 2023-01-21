@@ -58,11 +58,13 @@ function display_help {
     echo "    ${BOLD}-f${NC}                 Rebuild from scratch"
     echo "  ${GREEN}start${NC}               Start the application"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
     echo "    ${BOLD}-p <port>${NC}          Specify a port to listen (Default: ${DEFAULT_PORT})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
-    echo "    ${BOLD}-c <command>${NC}       Specify a command for startup (Overrides -s option)"
     echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
-    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-c <command>${NC}       Specify a command for startup (Overrides -s option)"
+    echo "    ${BOLD}-l <key=value>${NC}     Specify label key value for container (i.e. key=value)"
+    echo "    ${BOLD}-t${NC}                 Run in Traefik proxy (Default: http://<dir>.localhost)"
     echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}stop${NC}                Stop the application"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
@@ -309,15 +311,16 @@ elif [ "$1" == "remove" ]; then
 elif [ "$1" == "start" ]; then
     shift 1
 
-    while getopts p:e:n:v:s:c:b OPTION; do
+    while getopts v:n:p:e:s:c:l:b OPTION; do
         case $OPTION in
-            e) EXPOSE_PORTS+=(${OPTARG});;
+            v) IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
             p) DEFAULT_PORT=${OPTARG};;
+            e) EXPOSE_PORTS+=(${OPTARG});;
             s) SERVER=${OPTARG};;
-            v) IMAGE_VERSION=${OPTARG};;
+            c) USER_COMMAND=${OPTARG};;
+            l) LABELS+=(${OPTARG});;
             b) background="yes";;
-            c) command=${OPTARG};;
             *) invalid_arguments_provided;;
         esac
     done
@@ -338,8 +341,8 @@ elif [ "$1" == "start" ]; then
         ARGS+=(start $CONTAINER_NAME)
     else
         # Check if custom entrypoint given
-        if [ "$command" ]; then
-            ENTRYPOINT=$command
+        if [ "$USER_COMMAND" ]; then
+            ENTRYPOINT=$USER_COMMAND
         elif [ "$SERVER" == "octane" ]; then
             ENTRYPOINT="start-server octane"
         elif [ "$SERVER" == "nginx" ]; then
@@ -347,6 +350,7 @@ elif [ "$1" == "start" ]; then
         fi
 
         # Check if default port is intentionally empty
+        # If it is, skip `-p` parameter completely
         if [ "$DEFAULT_PORT" == "" ]; then
             DEFAULT_PORT=$DEFAULT_PORT
         else
@@ -355,9 +359,9 @@ elif [ "$1" == "start" ]; then
 
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
-            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
-            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
