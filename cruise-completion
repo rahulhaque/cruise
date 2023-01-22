@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
-                                                           
-complete -W "build start stop restart create shell root-shell export import remove install uninstall environments" cruise
 
+complete -W "environments build start stop restart shell root-shell export import remove create traefik install uninstall" cruise

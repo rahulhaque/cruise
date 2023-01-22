@@ -93,7 +93,7 @@ cruise start -s octane -b -p 8080
 # use it however you like
 cruise shell
 
-# Logout from the shell 
+# Logout from the shell
 # or press `ctrl+d`
 logout
 
@@ -123,7 +123,7 @@ export default defineConfig({
     ...
 }
 
-# Drop inside the running project 
+# Drop inside the running project
 # with `cruise shell` and
 # start the vite server
 npm run dev
@@ -133,7 +133,7 @@ If you've defined a version when starting a project with `-v` option, like - `cr
 
 ### 3. Other Developments
 
-You can use Cruise to do any development of your choice as long as the internal tools support. Simply run `cruise shell` anywhere to get the temporary development shell up with all the tools available to you. You can also start the server from shell mode. Just run `start-server` inside the shell and it will start PHP-FPM and Nginx for you. By default no port is exposed for temporary shell session. To bind any available port from your PC to any port inside the shell, run `cruise shell` with `-e` option, such as - `cruise shell -e 8080:80`. While Cruise provides out of the box support for Laravel applications, it is not bound to only Laravel development. Fork it, customize it and use it however you like.    
+You can use Cruise to do any development of your choice as long as the included tools support. Simply run `cruise shell` anywhere to get the temporary development shell up with all the tools available to you. You can also start the server from shell mode. Just run `start-server` inside the shell and it will start PHP-FPM and Nginx for you. By default no port is exposed for temporary shell session. To bind any available port from your PC to any port inside the shell, run `cruise shell` with `-e` option, such as - `cruise shell -e 8080:80`. While Cruise provides out of the box support for Laravel applications, it is not bound to only Laravel development. Fork it, customize it and use it however you like.
 
 > **Note:** Any command unknown to Cruise will be passed to Docker.
 

@@ -53,6 +53,7 @@ function display_help {
     echo "Unknown commands are passed to the docker binary."
     echo
     echo "${YELLOW}Commands:${NC}"
+    echo "  ${GREEN}environments${NC}        Show available environments to build"
     echo "  ${GREEN}build${NC}               Build the cruise image"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-f${NC}                 Rebuild from scratch"
@@ -64,14 +65,11 @@ function display_help {
     echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
     echo "    ${BOLD}-c <command>${NC}       Specify a command for startup (Overrides -s option)"
     echo "    ${BOLD}-l <key=value>${NC}     Specify label key value for container (i.e. key=value)"
-    echo "    ${BOLD}-t${NC}                 Run in Traefik proxy (Default: http://<dir>.localhost)"
     echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}stop${NC}                Stop the application"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-f${NC}                 Stop the application and remove the container"
     echo "  ${GREEN}restart${NC}             Restart the application"
-    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "  ${GREEN}create${NC}              Create a Laravel project in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
@@ -89,10 +87,18 @@ function display_help {
     echo "  ${GREEN}remove${NC}              Remove a built cruise image"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-f${NC}                 Force remove the container"
+    echo "  ${GREEN}create${NC}              Create a Laravel project in the folder"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "  ${GREEN}traefik{NC}              Start the application in Traefik proxy"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
+    echo "    ${BOLD}-c <command>${NC}       Specify a command for startup (Overrides -s option)"
+    echo "    ${BOLD}-l <key=value>${NC}     Specify label key value for container (i.e. key=value)"
+    echo "    ${BOLD}-b${NC}                 Run in the background"
     echo
     echo "  ${GREEN}install${NC}             Install cruise binary"
     echo "  ${GREEN}uninstall${NC}           Uninstall cruise binary"
-    echo "  ${GREEN}environments${NC}        Show available environments for use"
 
     exit 1
 }
@@ -308,6 +314,7 @@ elif [ "$1" == "remove" ]; then
         ARGS+=(rmi cruise-$IMAGE_VERSION:latest)
     fi
 
+# Start the application container...
 elif [ "$1" == "start" ]; then
     shift 1
 
@@ -534,6 +541,60 @@ elif [ "$1" == "create" ]; then
         ARGS+=(run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel ${@:$OPTIND:1})
     fi
 
+# Start the application container with Traefik support...
+elif [ "$1" == "traefik" ]; then
+    shift 1
+
+    while getopts v:n:s:c:l:b OPTION; do
+        case $OPTION in
+            v) IMAGE_VERSION=${OPTARG};;
+            n) DEFAULT_NETWORK=${OPTARG};;
+            s) SERVER=${OPTARG};;
+            c) USER_COMMAND=${OPTARG};;
+            l) LABELS+=(${OPTARG});;
+            b) background="yes";;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    check_if_docker_running
+    check_if_network_exists
+
+    if [ $IMAGE_VERSION ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+    fi
+
+    # Check if there is already any container running with the same name...
+    if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        # If container is running, then bash into it...
+        ARGS+=(exec -u cruise -it $CONTAINER_NAME $ENTRYPOINT)
+    elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
+        # If container exist, then start it...
+        ARGS+=(start $CONTAINER_NAME)
+    else
+        # Check if custom entrypoint given
+        if [ "$USER_COMMAND" ]; then
+            ENTRYPOINT=$USER_COMMAND
+        elif [ "$SERVER" == "octane" ]; then
+            ENTRYPOINT="start-server octane"
+        elif [ "$SERVER" == "nginx" ]; then
+            ENTRYPOINT="start-server"
+        fi
+
+        # Check if user provided labels for the image
+        # Skip default labels in this case
+        if [ ! ${LABELS[@]} ]; then
+            TRAEFIK_ARGS="-l traefik.enable=true -l traefik.http.routers.${PWD##*/}.entrypoints=web -l traefik.http.routers.${PWD##*/}.rule=Host(\`${PWD##*/}.localhost\`)"
+        fi
+
+        # Run the image with parameters...
+        if [ "$background" == "yes" ]; then
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        else
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+        fi
+    fi
+
 # Pass unknown commands to the "docker" binary...
 else
     ARGS+=("$@")
@@ -543,6 +604,11 @@ fi
 if [ "$CRUISE_DEBUG_ENABLED" == "yes" ]; then
     echo "${CYAN}docker ${ARGS[@]}${NC}" >&1
     echo "" >&1
+
+    # Stop execution if STOP_ON_DEBUG is enabled...
+    if [ "$STOP_ON_DEBUG" == "yes" ]; then
+        exit 1
+    fi
 fi
 
 # Run Docker with the defined arguments...
