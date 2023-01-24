@@ -89,7 +89,7 @@ function display_help {
     echo "    ${BOLD}-f${NC}                 Force remove the container"
     echo "  ${GREEN}create${NC}              Create a Laravel project in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "  ${GREEN}traefik{NC}              Start the application in Traefik proxy"
+    echo "  ${GREEN}traefik${NC}              Start the application in Traefik proxy"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
     echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
