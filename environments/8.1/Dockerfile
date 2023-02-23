@@ -77,7 +77,6 @@ RUN groupadd --force -g $WWWGROUP cruise \
 COPY start-server /usr/local/bin/start-server
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY supervisord.octane.conf /etc/supervisor/conf.d/supervisord.octane.conf
-COPY php.ini /etc/php/8.1/cli/conf.d/99-php.ini
 COPY php.ini /etc/php/8.1/fpm/conf.d/99-php.ini
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx.octane.conf /etc/nginx/conf.d/octane.conf.bak

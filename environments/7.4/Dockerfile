@@ -76,7 +76,6 @@ RUN groupadd --force -g $WWWGROUP cruise \
 
 COPY start-server /usr/local/bin/start-server
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY php.ini /etc/php/7.4/cli/conf.d/99-php.ini
 COPY php.ini /etc/php/7.4/fpm/conf.d/99-php.ini
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 RUN rm /etc/nginx/sites-enabled/default
