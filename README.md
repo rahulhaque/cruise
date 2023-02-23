@@ -4,7 +4,9 @@ A highly opinionated Laravel Sail like implementation of docker that focuses mor
 
 ## Requirements
 
-- Docker
+- Docker Desktop
+
+> If you're not running Docker Desktop for some reason, make sure to listen to (bind to) `0.0.0.0` instead of `127.0.0.1` to connect to host's MySQL, Redis, PosgreSQL etc. from the container. Also, make sure to `CREATE USER 'root'@'%'` and `GRANT ALL ON *.* TO 'root'@'%'';` for database access. With Docker Desktop, you don't have to do any of the above steps.
 
 ## Installation
 
