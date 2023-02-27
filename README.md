@@ -1,4 +1,4 @@
-# Laravel Cruise
+# Cruise for Laravel
 
 A highly opinionated Laravel Sail like implementation of docker that focuses more on freedom of the development environment rather than sticking to your per project docker configuration. This is a setup once and use anytime on any machine type approach to give the developer the portability of their development environment. Cruise assumes you've no development tools installed in your system except docker and will provide all the tools in a bundled together portable environment.
 
@@ -72,7 +72,7 @@ MAIL_HOST=host.docker.internal
 ...
 ```
 
-This will allow `cruise` to connect to your local MySQL, Redis or Mailhog setup from the container. Now follow the next steps for the basics of `cruise`.
+This will allow `cruise` to connect to your local MySQL, Redis or Mailpit setup from the container. Now follow the next steps for the basics of `cruise`.
 
 ```bash
 # Open terminal in the project directory
@@ -198,14 +198,14 @@ Edit the dockerfile in `~/.cruise/environments` directory if default is not what
 
 Well, I started off with Cruise being a highly opinionated implementation of those of like Laravel Sail. So, what are they? Why I thought of making Cruise and what problems it solves? It all started with me being forced to switch my workstation/laptop multiple times within a month or so because of technical issues. Installing and configuring everything from scratch every time for my development was time wasting and distracting. I wanted my development tools to be - **configured**, **backed up**, **OS independent**, **portable** and **accessible offline**. While docker can give me all of the above, it comes with the sheer complexity of its own. So, I started making Cruise and tried to make it as simple as possible for both expert and beginners in docker.
 
-- Cruise makes the most uses of PC's local resources, like - MySQL, Redis, PostgreSQL, Mailhog etc. for everything instead of project specific multiple database, cache, mail containers. More containers, more things to manage, introduces more complexity.
+- Cruise makes the most uses of PC's local resources, like - MySQL, Redis, PostgreSQL, Mailpit etc. for everything instead of project specific multiple database, cache, mail containers. More containers, more things to manage, introduces more complexity.
 - I wanted my frequently used development tools within hand's reach, such as - PHP, Composer, Node, Npm, Git, Nginx along with different version available any time anywhere. Cruise can give you a shell with all of the above anywhere any moment with a simple command either for some quick tinkering, or long term persistent tasks, you decide.
 - Cruise focuses on configuring the base once and then use it everywhere without thinking about if one tool available in one container is available in another. Saving time in configuring project wise docker settings.
 - Cruise aims to simplify using docker while not hiding all the magic happening behind. It helps in learning docker for new comers by showing all the commands executed in the background.
 - You can create a backup of your configured environment without being too specific to your project and carry it around in pen portable drives. Usable even if there is no internet connection.
 - Last but not the least, Laravel Sail uses `php artisan serve` to serve the application in a single threaded environment. Cruise enables multi-threading and runs the application from real world perspective with PHP-FPM and Nginx.
 
-Lastly, this may not be the best solution for you based on your use case and project setup. Maybe you are comfortable in some other set up. If you happen to try this out, please, do share any idea, recommendation or feedback.
+Lastly, this may not be the best solution for you based on how you like to manage your projects. Maybe you are comfortable in some other set up. If you happen to try this out, please, do share any idea, recommendation or feedback.
 
 ## Credits
 
