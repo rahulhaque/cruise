@@ -5,6 +5,9 @@ if [ ! -d /.composer ]; then
 fi
 
 chmod -R ugo+rw /.composer
+chown -R $USER:www-data /var/www/html
+chgrp -R www-data storage bootstrap/cache
+chmod -R ug+rwx storage bootstrap/cache
 
 if [ "$1" == "octane" ]; then
     mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.bak 2> /dev/null
