@@ -25,6 +25,7 @@ fi
 # Define global parameters...
 IMAGE_VERSION=$DEFAULT_IMAGE_VERSION
 CONTAINER_NAME=$CONTAINER_NAME_PATTERN
+SHELL_USER=$DEFAULT_SHELL_USER
 SERVER="nginx"
 EXPOSE_PORTS=()
 
@@ -73,13 +74,14 @@ function display_help {
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
+    echo "    ${BOLD}-u <user>${NC}          Specify a user to run the shell as (Default: ${SHELL_USER})"
     echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}root-shell${NC}          Start a root shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}export${NC}              Backup a cruise image as .tar"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
@@ -432,10 +434,11 @@ elif [ "$1" == "restart" ]; then
 elif [ "$1" == "shell" ]; then
     shift 1
 
-    while getopts e:n:v:b OPTION; do
+    while getopts e:n:u:v:b OPTION; do
         case $OPTION in
             e) EXPOSE_PORTS+=(${OPTARG});;
             n) DEFAULT_NETWORK=${OPTARG};;
+            u) SHELL_USER=${OPTARG};;
             v) IMAGE_VERSION=${OPTARG};;
             b) background="yes";;
             *) invalid_arguments_provided;;
@@ -451,7 +454,7 @@ elif [ "$1" == "shell" ]; then
 
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
-        ARGS+=(exec -u cruise -it $CONTAINER_NAME $ENTRYPOINT)
+        ARGS+=(exec -u $SHELL_USER -it $CONTAINER_NAME $ENTRYPOINT)
     else
         # Check if there is already container with same name
         if [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
@@ -461,7 +464,7 @@ elif [ "$1" == "shell" ]; then
         if [ "$background" == "yes" ]; then
             ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
-            ARGS+=(run -u cruise -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
