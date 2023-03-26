@@ -5,7 +5,7 @@ if [ ! -d /.composer ]; then
 fi
 
 chmod -R ugo+rw /.composer
-chown -R $USER:www-data /var/www/html
+
 chgrp -R www-data storage bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache
 
