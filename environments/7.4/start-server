@@ -6,7 +6,4 @@ fi
 
 chmod -R ugo+rw /.composer
 
-chgrp -R www-data storage bootstrap/cache
-chmod -R ug+rwx storage bootstrap/cache
-
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

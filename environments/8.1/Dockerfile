@@ -13,6 +13,7 @@ ENV TZ=UTC
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
+# Install PHP
 RUN apt-get update \
     && apt-get install -y gnupg gosu curl nano fontconfig nginx ca-certificates \
        zip unzip supervisor sqlite3 libcap2-bin libpng-dev python2 apt-utils \
@@ -35,6 +36,7 @@ RUN apt-get update \
        php8.1-pcov php8.1-xdebug \
     && php -r "readfile('https://getcomposer.org/installer');" | php -- --install-dir=/usr/bin/ --filename=composer
 
+# Install Node
 RUN curl -L https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g npm \
@@ -43,17 +45,20 @@ RUN curl -L https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \
     && apt-get update \
     && apt-get install -y yarn
 
+# Install Bangla and MS Fonts
 RUN mkdir -p /usr/share/fonts \
     && curl -L https://www.omicronlab.com/download/fonts/Bangla.ttf -o /usr/share/fonts/Bangla.ttf \
     && echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections \
     && apt-get install -y ttf-mscorefonts-installer
 
+# Install Wkhtmltopdf
 RUN apt-get install -y libxext6 libxrender1 xfonts-base xfonts-75dpi \
     && curl -L https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb -o /wkhtmltopdf.deb \
     && dpkg -i /wkhtmltopdf.deb \
     && rm /wkhtmltopdf.deb \
     && fc-cache -fv
 
+# Install Oh-my-zsh
 RUN apt-get install -y git zsh \
     && export HOME=/home/cruise \
     && sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" --unattended \
@@ -64,24 +69,28 @@ RUN apt-get install -y git zsh \
     && sed -i "3 i export PATH=./vendor/bin:\$PATH" $HOME/.zshrc \
     && sed -i "4 i export PATH=\$HOME/.config/composer/vendor/bin:\$PATH" $HOME/.zshrc
 
+# Clean any temporary files
 RUN apt-get -y autoremove \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.1
-
-RUN groupadd --force -g $WWWGROUP cruise \
-    && useradd -s /bin/bash --no-create-home --no-user-group -g $WWWGROUP -u $WWWUSER cruise \
-    && chown -R $WWWUSER:$WWWGROUP /home/cruise
-
+# Copy all required config files
 COPY start-server /usr/local/bin/start-server
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY supervisord.octane.conf /etc/supervisor/conf.d/supervisord.octane.conf
+COPY pool.conf /etc/php/8.1/fpm/pool.d/z-www-custom.conf
 COPY php.ini /etc/php/8.1/fpm/conf.d/99-php.ini
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx.octane.conf /etc/nginx/conf.d/octane.conf.bak
-RUN rm /etc/nginx/sites-enabled/default
-RUN chmod +x /usr/local/bin/start-server
+
+# Update runtime permissions
+RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.1 \
+    && groupadd --force -g $WWWGROUP cruise \
+    && useradd -s /bin/bash --no-create-home --no-user-group -g $WWWGROUP -u $WWWUSER cruise \
+    && chown -R $WWWUSER:$WWWGROUP /home/cruise \
+    && rm /etc/nginx/sites-enabled/default \
+    && sed -i 's/www-data;/cruise;/g' /etc/nginx/nginx.conf \
+    && chmod +x /usr/local/bin/start-server
 
 EXPOSE 80
 

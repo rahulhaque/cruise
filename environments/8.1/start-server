@@ -6,9 +6,6 @@ fi
 
 chmod -R ugo+rw /.composer
 
-chgrp -R www-data storage bootstrap/cache
-chmod -R ug+rwx storage bootstrap/cache
-
 if [ "$1" == "octane" ]; then
     mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.bak 2> /dev/null
     mv /etc/nginx/conf.d/octane.conf.bak /etc/nginx/conf.d/octane.conf 2> /dev/nul
