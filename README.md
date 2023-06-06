@@ -6,7 +6,7 @@ A highly opinionated Laravel Sail like implementation of docker that focuses mor
 
 - Docker Desktop
 
-> If you're not running Docker Desktop for some reason, make sure to update the configs of host's MySQL, Redis, PosgreSQL etc. to listen to (bind to) `0.0.0.0` instead of `127.0.0.1`. Otherwise you won't get access to host's database from within the container. Also, make sure to `CREATE USER 'root'@'%'` and `GRANT ALL ON *.* TO 'root'@'%'';` for database access. If you've installed Docker Desktop, you don't need any of the above steps.
+> If you're not running Docker Engine instead of Docker Desktop for some reason, make sure to update the configs of host's MySQL, Redis, PosgreSQL etc. to listen to (bind to) `0.0.0.0` instead of `127.0.0.1`. Otherwise you won't get access to host's database from within the container. Also, make sure to `CREATE USER 'root'@'%'` and `GRANT ALL ON *.* TO 'root'@'%'';` for database access. If you've installed Docker Desktop, you don't need any of the above steps.
 
 ## Installation
 

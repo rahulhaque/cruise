@@ -1,3 +1,101 @@
 #!/usr/bin/env bash
 
-complete -W "environments build start stop restart shell root-shell export import remove create traefik install uninstall" cruise
+_cruise_autocomplete() {
+    local cursor prev_word commands options
+    COMPREPLY=()
+    cursor="${COMP_WORDS[COMP_CWORD]}"
+    prev_word="${COMP_WORDS[COMP_CWORD-1]}"
+    commands="environments build start stop restart shell root-shell export import remove create traefik install uninstall"
+
+    case "${prev_word}" in
+        build | stop)
+            COMPREPLY=( -v -f )
+            
+            return 0
+            ;;
+        start)
+            COMPREPLY=( -v -n -p -e -s -c -l -b )
+            
+            return 0
+            ;;
+        traefik)
+            COMPREPLY=( -v -n -s -c -l -b )
+            
+            return 0
+            ;;
+        import)
+            COMPREPLY=( $(compgen -f "${cursor}") )
+            
+            return 0
+            ;;
+        create | export | restart)
+            COMPREPLY=( -v )
+            
+            return 0
+            ;;
+        remove)
+            COMPREPLY=( $(docker ps -a --format '{{.Names}}' | grep 'cruise') )
+
+            return 0
+            ;;
+        shell)
+            COMPREPLY=( -v -n -e -u -b )
+
+            return 0
+            ;;
+        root-shell)
+            COMPREPLY=( -v -n -e -b )
+
+            return 0
+            ;;
+        environments | install | uninstall)
+            COMPREPLY=()
+
+            return 0
+            ;;
+        -v)
+            if [[ "${COMP_WORDS[@]}" = *build* ]]; then
+                COMPREPLY=( $(ls "$HOME/.cruise/environments") )
+            fi
+            
+            if [[ "${COMP_WORDS[@]}" = *create* ]]; then
+                COMPREPLY=( $(ls "$HOME/.cruise/environments") )
+            fi
+
+            if [[ "${COMP_WORDS[@]}" = *export* ]]; then
+                COMPREPLY=( $(ls "$HOME/.cruise/environments") )
+            fi
+
+            if [[ "${COMP_WORDS[@]}" = *restart* ]]; then
+                COMPREPLY=( $(ls "$HOME/.cruise/environments") )
+            fi
+
+            return 0
+            ;;
+        -f)
+            if [[ "${COMP_WORDS[@]}" = *build* ]]; then
+                COMPREPLY=( -v )
+            fi
+            
+            return 0
+            ;;
+        -s)
+            if [[ "${COMP_WORDS[@]}" = *start* ]]; then
+                COMPREPLY=( nginx octane )
+            fi
+
+            if [[ "${COMP_WORDS[@]}" = *traefik* ]]; then
+                COMPREPLY=( nginx octane )
+            fi
+            
+            return 0
+            ;;
+        *)
+            COMPREPLY=( $(compgen -W "${commands}" -- ${cursor}) )
+            
+            return 0
+            ;;
+    esac
+}
+
+complete -F _cruise_autocomplete cruise

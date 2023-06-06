@@ -94,6 +94,7 @@ function display_help {
     echo "  ${GREEN}traefik${NC}              Start the application in Traefik proxy"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
     echo "    ${BOLD}-c <command>${NC}       Specify a command for startup (Overrides -s option)"
     echo "    ${BOLD}-l <key=value>${NC}     Specify label key value for container (i.e. key=value)"
@@ -548,10 +549,11 @@ elif [ "$1" == "create" ]; then
 elif [ "$1" == "traefik" ]; then
     shift 1
 
-    while getopts v:n:s:c:l:b OPTION; do
+    while getopts v:n:p:s:c:l:b OPTION; do
         case $OPTION in
             v) IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
+            e) EXPOSE_PORTS+=(${OPTARG});;
             s) SERVER=${OPTARG};;
             c) USER_COMMAND=${OPTARG};;
             l) LABELS+=(${OPTARG});;
@@ -592,9 +594,9 @@ elif [ "$1" == "traefik" ]; then
 
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
-            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
-            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
