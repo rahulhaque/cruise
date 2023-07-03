@@ -549,7 +549,7 @@ elif [ "$1" == "create" ]; then
 elif [ "$1" == "traefik" ]; then
     shift 1
 
-    while getopts v:n:p:s:c:l:b OPTION; do
+    while getopts v:n:e:p:s:c:l:b OPTION; do
         case $OPTION in
             v) IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
