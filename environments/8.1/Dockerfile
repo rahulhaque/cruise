@@ -10,6 +10,8 @@ WORKDIR /var/www/html
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV TZ=UTC
+ENV NPM_CONFIG_PREFIX=/home/cruise/.npm-global
+ENV PATH=$PATH:/home/cruise/.npm-global/bin
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
