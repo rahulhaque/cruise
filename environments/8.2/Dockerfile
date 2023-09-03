@@ -4,7 +4,7 @@ LABEL maintainer="Rahul Haque"
 
 ARG WWWGROUP
 ARG WWWUSER
-ARG PHP_VERSION=7.4
+ARG PHP_VERSION=8.2
 ARG NODE_VERSION=16
 ARG NPM_VERSION=8
 
@@ -36,7 +36,7 @@ RUN apt-get update \
        php$PHP_VERSION-xml php$PHP_VERSION-zip php$PHP_VERSION-bcmath php$PHP_VERSION-soap \
        php$PHP_VERSION-intl php$PHP_VERSION-readline \
        php$PHP_VERSION-ldap \
-       php$PHP_VERSION-msgpack php$PHP_VERSION-igbinary php$PHP_VERSION-redis \
+       php$PHP_VERSION-msgpack php$PHP_VERSION-igbinary php$PHP_VERSION-redis php$PHP_VERSION-swoole \
        php$PHP_VERSION-pcov php$PHP_VERSION-xdebug \
     && php -r "readfile('https://getcomposer.org/installer');" | php -- --install-dir=/usr/bin/ --filename=composer
 
@@ -81,9 +81,11 @@ RUN apt-get -y autoremove \
 # Copy all required config files
 COPY start-server /usr/local/bin/start-server
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY supervisord.octane.conf /etc/supervisor/conf.d/supervisord.octane.conf
 COPY pool.conf /etc/php/$PHP_VERSION/fpm/pool.d/z-www-custom.conf
 COPY php.ini /etc/php/$PHP_VERSION/fpm/conf.d/99-php.ini
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.octane.conf /etc/nginx/conf.d/octane.conf.bak
 
 # Update runtime permissions
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php$PHP_VERSION \
