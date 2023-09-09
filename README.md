@@ -1,4 +1,4 @@
-# Cruise for Laravel
+# Cruise 🚢
 
 A highly opinionated Laravel Sail like implementation of docker that focuses more on freedom of the development environment rather than sticking to your per project docker configuration. This is a setup once and use anytime on any machine type approach to give the developers the portability of their development environment. Cruise assumes you've no development tools installed in your system except docker and will provide all the tools in a bundled together portable environment. To know more about the motivation behind **Cruise**, you can have a look at the [backstory](#backstory) first before diving in.
 
