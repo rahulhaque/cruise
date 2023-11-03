@@ -345,9 +345,11 @@ elif [ "$1" == "start" ]; then
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
         # If container is running, then bash into it...
+        echo "${GREEN}Attaching to existing container...${NC}" >&1
         ARGS+=(exec -u cruise -it $CONTAINER_NAME $ENTRYPOINT)
     elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
         # If container exist, then start it...
+        echo "${GREEN}Starting existing container...${NC}" >&1
         ARGS+=(start $CONTAINER_NAME)
     else
         # Check if custom entrypoint given
@@ -369,8 +371,10 @@ elif [ "$1" == "start" ]; then
 
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
+            echo "${GREEN}Starting new container in background...${NC}" >&1
             ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
+            echo "${GREEN}Starting new temporary container...${NC}" >&1
             ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
@@ -400,6 +404,7 @@ elif [ "$1" == "stop" ]; then
     else
         # Check if there is already any container running with the same name...
         if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+            echo "${GREEN}Stopping running container...${NC}" >&1
             ARGS+=(stop $CONTAINER_NAME)
         else
             cruise_is_not_running
@@ -426,6 +431,7 @@ elif [ "$1" == "restart" ]; then
 
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        echo "${GREEN}Restarting running container...${NC}" >&1
         ARGS+=(restart $CONTAINER_NAME)
     else
         cruise_is_not_running
@@ -455,6 +461,7 @@ elif [ "$1" == "shell" ]; then
 
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        echo "${GREEN}Attaching to existing shell...${NC}" >&1
         ARGS+=(exec -u $SHELL_USER -it $CONTAINER_NAME $ENTRYPOINT)
     else
         # Check if there is already container with same name
@@ -463,8 +470,10 @@ elif [ "$1" == "shell" ]; then
         fi
 
         if [ "$background" == "yes" ]; then
+            echo "${GREEN}Starting new shell in background...${NC}" >&1
             ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
+            echo "${GREEN}Starting new temporary container...${NC}" >&1
             ARGS+=(run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
@@ -494,6 +503,7 @@ elif [ "$1" == "root-shell" ]; then
 
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+        echo "${GREEN}Attaching to existing shell as root...${NC}" >&1
         ARGS+=(exec -it $CONTAINER_NAME $ENTRYPOINT)
     else
         # Check if there is already container with same name
@@ -502,8 +512,10 @@ elif [ "$1" == "root-shell" ]; then
         fi
 
         if [ "$background" == "yes" ]; then
+            echo "${GREEN}Starting new shell in the background as root...${NC}" >&1
             ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
+            echo "${GREEN}Starting new temporary shell as root...${NC}" >&1
             ARGS+=(run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
@@ -594,8 +606,10 @@ elif [ "$1" == "traefik" ]; then
 
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
+            echo "${GREEN}Starting new traefik proxy compatible container in background...${NC}" >&1
             ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
+            echo "${GREEN}Starting new temporary traefik proxy compatible container...${NC}" >&1
             ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
@@ -607,7 +621,8 @@ fi
 
 # Print the generated docker command when debug is enabled...
 if [ "$CRUISE_DEBUG_ENABLED" == "yes" ]; then
-    echo "${CYAN}docker ${ARGS[@]}${NC}" >&1
+    echo "" >&1
+    echo "${YELLOW}Debug command:${NC} ${CYAN}docker ${ARGS[@]}${NC}" >&1
     echo "" >&1
 
     # Stop execution if STOP_ON_DEBUG is enabled...
