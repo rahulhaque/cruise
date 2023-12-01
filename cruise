@@ -94,6 +94,7 @@ function display_help {
     echo "  ${GREEN}traefik${NC}              Start the application in Traefik proxy"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-p <port>${NC}          Specify a port to listen (Default: ${DEFAULT_PORT})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
     echo "    ${BOLD}-c <command>${NC}       Specify a command for startup (Overrides -s option)"
@@ -565,6 +566,7 @@ elif [ "$1" == "traefik" ]; then
         case $OPTION in
             v) IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
+            p) DEFAULT_PORT=${OPTARG};;
             e) EXPOSE_PORTS+=(${OPTARG});;
             s) SERVER=${OPTARG};;
             c) USER_COMMAND=${OPTARG};;
@@ -601,7 +603,7 @@ elif [ "$1" == "traefik" ]; then
         # Check if user provided labels for the image
         # Skip default labels in this case
         if [ ! ${LABELS[@]} ]; then
-            TRAEFIK_ARGS="-l traefik.enable=true -l traefik.http.routers.${PWD##*/}.entrypoints=web -l traefik.http.routers.${PWD##*/}.rule=Host(\`${PWD##*/}.localhost\`)"
+            TRAEFIK_ARGS="-l traefik.enable=true -l traefik.http.routers.${PWD##*/}.entrypoints=web -l traefik.http.services.${PWD##*/}.loadbalancer.server.port=${DEFAULT_PORT} -l traefik.http.routers.${PWD##*/}.rule=Host(\`${PWD##*/}.localhost\`)"
         fi
 
         # Run the image with parameters...
