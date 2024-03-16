@@ -586,9 +586,11 @@ elif [ "$1" == "traefik" ]; then
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
         # If container is running, then bash into it...
+        echo "${GREEN}Attaching to existing container...${NC}" >&1
         ARGS+=(exec -u cruise -it $CONTAINER_NAME $ENTRYPOINT)
     elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
         # If container exist, then start it...
+        echo "${GREEN}Starting existing container...${NC}" >&1
         ARGS+=(start $CONTAINER_NAME)
     else
         # Check if custom entrypoint given
