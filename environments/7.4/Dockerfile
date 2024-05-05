@@ -88,7 +88,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Update runtime permissions
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php$PHP_VERSION \
     && groupadd --force -g $WWWGROUP cruise \
-    && useradd -s /bin/bash --no-create-home --no-user-group -g $WWWGROUP -u $WWWUSER cruise \
+    && useradd -s /usr/bin/zsh --no-create-home --no-user-group -g $WWWGROUP -u $WWWUSER cruise \
     && chown -R $WWWUSER:$WWWGROUP /home/cruise \
     && rm /etc/nginx/sites-enabled/default \
     && sed -i 's/www-data;/cruise;/g' /etc/nginx/nginx.conf \
