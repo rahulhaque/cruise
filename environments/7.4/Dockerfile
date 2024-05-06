@@ -79,11 +79,11 @@ RUN apt-get -y autoremove \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy all required config files
-COPY start-server /usr/local/bin/start-server
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY pool.conf /etc/php/$PHP_VERSION/fpm/pool.d/z-www-custom.conf
-COPY php.ini /etc/php/$PHP_VERSION/fpm/conf.d/99-php.ini
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY $PHP_VERSION/start-server /usr/local/bin/start-server
+COPY $PHP_VERSION/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY $PHP_VERSION/pool.conf /etc/php/$PHP_VERSION/fpm/pool.d/z-www-custom.conf
+COPY $PHP_VERSION/php.ini /etc/php/$PHP_VERSION/fpm/conf.d/99-php.ini
+COPY $PHP_VERSION/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Update runtime permissions
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php$PHP_VERSION \

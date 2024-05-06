@@ -221,6 +221,7 @@ elif [ "$1" == "build" ]; then
     while getopts v:f OPTION; do
         case $OPTION in
             v) IMAGE_VERSION=${OPTARG};;
+            f) fresh_install="--no-cache";; # Append --no-cache if provided
             *) invalid_arguments_provided;;
         esac
     done
@@ -234,7 +235,7 @@ elif [ "$1" == "build" ]; then
     echo "${GREEN}Base image name will be${NC} cruise-$IMAGE_VERSION:latest" >&1
     echo "" >&1
 
-    ARGS+=(build --build-arg WWWGROUP=$(id -g) --build-arg WWWUSER=$(id -u) -f $CRUISE_DIRECTORY/environments/$IMAGE_VERSION/Dockerfile -t cruise-$IMAGE_VERSION:latest $CRUISE_DIRECTORY/environments/$IMAGE_VERSION/ --no-cache)
+    ARGS+=(build --build-arg WWWGROUP=$(id -g) --build-arg WWWUSER=$(id -u) --build-arg PHP_VERSION=$IMAGE_VERSION -f $CRUISE_DIRECTORY/environments/$IMAGE_VERSION/Dockerfile -t cruise-$IMAGE_VERSION:latest $CRUISE_DIRECTORY/environments $fresh_install)
 
 # Show available image versions...
 elif [ "$1" == "environments" ]; then
