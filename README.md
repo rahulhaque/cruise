@@ -1,6 +1,6 @@
 # Cruise 🚢
 
-A highly opinionated Laravel Sail like implementation of docker that focuses more on freedom of the development environment rather than sticking to your per project docker configuration. This is a setup once and use anytime on any machine type approach to give the developers the portability of their development environment. Cruise assumes you've no development tools installed in your system except docker and will provide all the tools in a bundled together portable environment. To know more about the motivation behind **Cruise**, you can have a look at the [backstory](#backstory) first before diving in.
+A highly opinionated Laravel Sail like implementation of docker that focuses more on freedom of the development environment rather than sticking to your per project docker configuration. This is a setup once and "use anytime on any machine" type approach to give the developers the portability of their development environment. Cruise assumes you've no development tools installed in your system except docker and will provide all the tools in a bundled together portable environment. To know more about the motivation behind **Cruise**, you can have a look at the [backstory](#backstory) first before diving in.
 
 ## Requirements
 
@@ -23,16 +23,22 @@ git clone https://github.com/rahulhaque/laravel-cruise.git ~/.cruise
 cruise
 ```
 
-I suggest you go through the commands and options available for the first time to get a quick grasp of everything.
+I suggest you go through the commands and options available for the first time to get a quick grasp of what is offered.
 
 ## Building
 
 After installing `cruise` binary, build the base image by running the following. This is a one time step for new install.
 
+I recommend running `docker builder prune` command to clear any unnecessary build cache before building.
+
+The Cruise environment versions are set to match major PHP versions for easy recall.
+
 ```bash
-# -v option to tell which environment version to build
-# to see available environment versions -
-# run `cruise environments` first
+# Let's see which cruise environments are
+# available for you to build by running
+cruise environments
+
+# Build the preferred environment with -v option 
 cruise build -v 8.2
 ```
 
@@ -206,6 +212,17 @@ cruise stop
 # Stop the running project discarding the
 # changes and removing the container
 cruise stop -f
+```
+
+## VsCode Integration
+
+There's high chance after running a project, you may want to use VsCode's remote desktop to code inside the docker container (use it as a dev container). To do this, just open VsCode, open all commands and look for `Dev Containers: Attach to running container`. After VsCode done installing its server, open all commands and look for `Dev Containers: Open Attached Container Configuration File...` and paste the following.
+
+```json
+{
+    "workspaceFolder": "/var/www/html",
+    "remoteUser": "cruise"
+}
 ```
 
 ## Customization
