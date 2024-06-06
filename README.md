@@ -6,7 +6,9 @@ A highly opinionated Laravel Sail like implementation of docker that focuses mor
 
 - Docker Desktop or Docker Engine
 
-> If you've installed **Docker Desktop**, skip this part and go to [installation](#installation). If you're running **Docker Engine** (the one without GUI), make sure to update the configuration of **MySQL**, **Redis**, **PosgreSQL** etc. to listen to (bind to) `0.0.0.0` instead of `127.0.0.1`. Otherwise you won't get access to those from inside the container. Also, make sure to `CREATE USER 'root'@'%';` and `GRANT ALL ON *.* TO 'root'@'%';` for database access for **MySQL**.
+> If you've installed **Docker Desktop**, skip this part and go to [installation](#installation).
+>
+> If you're running **Docker Engine** (the one without GUI), make sure to update the configuration of **MySQL**, **Redis**, **PosgreSQL** etc. to listen to (bind to) `0.0.0.0` instead of `127.0.0.1`. Otherwise you won't get access to those from inside the container. Also, make sure to `CREATE USER 'root'@'%';` and `GRANT ALL ON *.* TO 'root'@'%';` for database access for **MySQL**. For **redis**, set `protected-mode no` in `/etc/redis/redis.conf`.
 
 ## Installation
 
