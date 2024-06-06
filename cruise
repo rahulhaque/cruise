@@ -373,10 +373,10 @@ elif [ "$1" == "start" ]; then
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new container in background...${NC}" >&1
-            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary container...${NC}" >&1
-            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -472,10 +472,10 @@ elif [ "$1" == "shell" ]; then
 
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new shell in background...${NC}" >&1
-            ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary container...${NC}" >&1
-            ARGS+=(run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -514,10 +514,10 @@ elif [ "$1" == "root-shell" ]; then
 
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new shell in the background as root...${NC}" >&1
-            ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary shell as root...${NC}" >&1
-            ARGS+=(run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -555,7 +555,7 @@ elif [ "$1" == "create" ]; then
             cruise_is_not_running
         fi
 
-        ARGS+=(run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel ${@:$OPTIND:1})
+        ARGS+=(run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel ${@:$OPTIND:1})
     fi
 
 # Start the application container with Traefik support...
@@ -611,10 +611,10 @@ elif [ "$1" == "traefik" ]; then
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new traefik proxy compatible container in background...${NC}" >&1
-            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary traefik proxy compatible container...${NC}" >&1
-            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 

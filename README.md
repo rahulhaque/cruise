@@ -216,7 +216,7 @@ cruise stop -f
 
 ## VsCode Integration
 
-There's high chance after running a project, you may want to use VsCode's remote desktop to code inside the docker container (use it as a dev container). To do this, just open VsCode, open all commands and look for `Dev Containers: Attach to running container`. After VsCode done installing its server, open all commands and look for `Dev Containers: Open Attached Container Configuration File...` and paste the following.
+There's high chance after running a project, you may want to use VsCode's remote desktop to code inside the docker container (use it as a dev container). To do this, just open VsCode, open all commands and look for `Dev Containers: Attach to running container`. After VsCode done installing its server, open all commands and look for `Dev Containers: Open Container Configuration File...` and paste the following.
 
 ```json
 {
