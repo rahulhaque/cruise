@@ -27,6 +27,16 @@ cruise
 
 I suggest you go through the commands and options available for the first time to get a quick grasp of what is offered.
 
+Bash completion is added by default. If you're using `oh-my-zsh`, source the completion script by adding the below lines in `~/.zshrc`.
+
+```bash
+if [ -f ~/.cruise/cruise-completion ]; then
+    source ~/.cruise/cruise-completion
+fi
+```
+
+Then run `omz reload` to load the new completion script.
+
 ## Building
 
 After installing `cruise` binary, build the base image by running the following. This is a one time step for new install.
