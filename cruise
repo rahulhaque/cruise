@@ -60,7 +60,8 @@ function display_help {
     echo "    ${BOLD}-f${NC}                 Rebuild from scratch"
     echo "  ${GREEN}start${NC}               Start the application"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-i <ip>${NC}            Specify a static ip for container (Default: Auto assigned)"
     echo "    ${BOLD}-p <port>${NC}          Specify a port to listen (Default: ${DEFAULT_PORT})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
@@ -74,13 +75,13 @@ function display_help {
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-u <user>${NC}          Specify a user to run the shell as (Default: ${SHELL_USER})"
     echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}root-shell${NC}          Start a root shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-b${NC}                 Run in the background"
     echo "  ${GREEN}export${NC}              Backup a cruise image as .tar"
@@ -91,9 +92,10 @@ function display_help {
     echo "    ${BOLD}-f${NC}                 Force remove the container"
     echo "  ${GREEN}create${NC}              Create a Laravel project in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "  ${GREEN}traefik${NC}              Start the application in Traefik proxy"
+    echo "  ${GREEN}traefik${NC}             Start the application in Traefik proxy"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "    ${BOLD}-n <network>${NC}       Specify a network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
+    echo "    ${BOLD}-i <ip>${NC}            Specify a static ip for container (Default: Auto assigned)"
     echo "    ${BOLD}-p <port>${NC}          Specify a port to listen (Default: ${DEFAULT_PORT})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-s <server>${NC}        Specify a server (i.e. nginx|octane)"
@@ -322,10 +324,11 @@ elif [ "$1" == "remove" ]; then
 elif [ "$1" == "start" ]; then
     shift 1
 
-    while getopts v:n:p:e:s:c:l:b OPTION; do
+    while getopts v:n:i:p:e:s:c:l:b OPTION; do
         case $OPTION in
             v) IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
+            i) DEFAULT_IP=${OPTARG};;
             p) DEFAULT_PORT=${OPTARG};;
             e) EXPOSE_PORTS+=(${OPTARG});;
             s) SERVER=${OPTARG};;
@@ -362,6 +365,11 @@ elif [ "$1" == "start" ]; then
             ENTRYPOINT="start-server"
         fi
 
+        # Check if default ip for container is given
+        if [ "$DEFAULT_IP" ]; then
+            IP="--ip $DEFAULT_IP"
+        fi
+
         # Check if default port is intentionally empty
         # If it is, skip `-p` parameter completely
         if [ "$DEFAULT_PORT" == "" ]; then
@@ -373,10 +381,10 @@ elif [ "$1" == "start" ]; then
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new container in background...${NC}" >&1
-            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary container...${NC}" >&1
-            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP --add-host host.docker.internal:host-gateway $DEFAULT_PORT ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -562,10 +570,11 @@ elif [ "$1" == "create" ]; then
 elif [ "$1" == "traefik" ]; then
     shift 1
 
-    while getopts v:n:e:p:s:c:l:b OPTION; do
+    while getopts v:n:e:i:p:s:c:l:b OPTION; do
         case $OPTION in
             v) IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
+            i) DEFAULT_IP=${OPTARG};;
             p) DEFAULT_PORT=${OPTARG};;
             e) EXPOSE_PORTS+=(${OPTARG});;
             s) SERVER=${OPTARG};;
@@ -602,6 +611,11 @@ elif [ "$1" == "traefik" ]; then
             ENTRYPOINT="start-server"
         fi
 
+        # Check if default ip for container is given
+        if [ "$DEFAULT_IP" ]; then
+            IP="--ip $DEFAULT_IP"
+        fi
+
         # Check if user provided labels for the image
         # Skip default labels in this case
         if [ ! ${LABELS[@]} ]; then
@@ -611,10 +625,10 @@ elif [ "$1" == "traefik" ]; then
         # Run the image with parameters...
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new traefik proxy compatible container in background...${NC}" >&1
-            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run -d --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary traefik proxy compatible container...${NC}" >&1
-            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(run --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP --add-host host.docker.internal:host-gateway $TRAEFIK_ARGS ${EXPOSE_PORTS[@]/#/-p } ${LABELS[@]/#/-l } cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
