@@ -652,7 +652,7 @@ elif [ "$1" == "code" ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
-    CONTAINER_HEX=$(echo -n "$CONTAINER_NAME" | xxd -p)
+    CONTAINER_HEX=$(echo -n "$CONTAINER_NAME" | od -A n -t x1 | sed 's/ *//g' | tr -d '\n')
 
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
