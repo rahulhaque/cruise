@@ -80,6 +80,7 @@ RUN apt-get -y autoremove \
 
 # Copy all required config files
 COPY $PHP_VERSION/start-server /usr/local/bin/start-server
+COPY $PHP_VERSION/node-switch /usr/local/bin/node-switch
 COPY $PHP_VERSION/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY $PHP_VERSION/pool.conf /etc/php/$PHP_VERSION/fpm/pool.d/z-www-custom.conf
 COPY $PHP_VERSION/php.ini /etc/php/$PHP_VERSION/fpm/conf.d/99-php.ini
@@ -92,7 +93,8 @@ RUN setcap "cap_net_bind_service=+ep" /usr/bin/php$PHP_VERSION \
     && chown -R $WWWUSER:$WWWGROUP /home/cruise \
     && rm /etc/nginx/sites-enabled/default \
     && sed -i 's/www-data;/cruise;/g' /etc/nginx/nginx.conf \
-    && chmod +x /usr/local/bin/start-server
+    && chmod +x /usr/local/bin/start-server \
+    && chmod +x /usr/local/bin/node-switch
 
 EXPOSE 80
 

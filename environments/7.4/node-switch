@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+# Check if the user provided a Node.js version
+if [ -z "$1" ]; then
+  echo "Please provide a Node.js version (e.g., 18, 20, 22)."
+  exit 1
+fi
+
+NODE_VERSION=$1
+MAJOR_VERSION=$(echo $NODE_VERSION | cut -d. -f1)
+
+# Check if the specified major Node.js version is already installed
+if command -v node &> /dev/null; then
+  INSTALLED_MAJOR_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
+  if [ "$INSTALLED_MAJOR_VERSION" == "$MAJOR_VERSION" ]; then
+    echo "Node.js version $MAJOR_VERSION is already installed."
+    exit 0
+  fi
+fi
+
+NODE_VERSION=$1
+
+# Update the package list
+apt update
+
+# Remove any existing Node.js and npm
+apt remove -y nodejs npm
+
+# Clean up any remaining packages and dependencies
+apt autoremove -y
+
+# Download and execute the NodeSource setup script for the specified version
+curl -fsSL https://deb.nodesource.com/setup_$NODE_VERSION.x | bash -
+
+# Install Node.js (and npm)
+apt install -y nodejs
+
+# Verify installation
+echo "nodejs $(node -v)"
+echo "npm $(npm -v)"
+
+echo "Node.js version $NODE_VERSION and npm have been installed successfully."
