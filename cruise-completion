@@ -14,12 +14,12 @@ _cruise_autocomplete() {
             return 0
             ;;
         start)
-            COMPREPLY=( -v -n -p -e -s -c -l -b )
+            COMPREPLY=( -v -n -i -p -e -s -c -l -b )
             
             return 0
             ;;
         traefik)
-            COMPREPLY=( -v -n -s -c -l -b )
+            COMPREPLY=( -v -n -i -p -e -s -c -l -b )
             
             return 0
             ;;
