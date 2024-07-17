@@ -6,11 +6,10 @@ ARG WWWGROUP
 ARG WWWUSER
 ARG PHP_VERSION=8.1
 ARG NODE_VERSION=20
-ARG NPM_VERSION=8
 
 WORKDIR /var/www/html
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 ENV NPM_CONFIG_PREFIX=/home/cruise/.npm-global
 ENV PATH=$PATH:/home/cruise/.npm-global/bin
@@ -43,7 +42,6 @@ RUN apt-get update \
 # Install Node
 RUN curl -L https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \
     && apt-get install -y nodejs \
-    && npm install -g npm@$NPM_VERSION \
     && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /usr/share/keyrings/yarn.gpg >/dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
     && apt-get update \
