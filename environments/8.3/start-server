@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+if [ ! -d /.composer ]; then
+    mkdir /.composer
+fi
+
+chmod -R ugo+rw /.composer
+
+if [ "$1" == "octane" ]; then
+    mv /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf.bak 2> /dev/null
+    mv /etc/nginx/conf.d/octane.conf.bak /etc/nginx/conf.d/octane.conf 2> /dev/nul
+
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.octane.conf
+else
+    mv /etc/nginx/conf.d/default.conf.bak /etc/nginx/conf.d/default.conf 2> /dev/nul
+    mv /etc/nginx/conf.d/octane.conf /etc/nginx/conf.d/octane.conf.bak 2> /dev/nul
+
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+fi
