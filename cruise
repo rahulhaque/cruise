@@ -452,10 +452,11 @@ elif [ "$1" == "restart" ]; then
 elif [ "$1" == "shell" ]; then
     shift 1
 
-    while getopts e:n:u:v:b OPTION; do
+    while getopts e:n:i:u:v:b OPTION; do
         case $OPTION in
             e) EXPOSE_PORTS+=(${OPTARG});;
             n) DEFAULT_NETWORK=${OPTARG};;
+            i) DEFAULT_IP=${OPTARG};;
             u) SHELL_USER=${OPTARG};;
             v) IMAGE_VERSION=${OPTARG};;
             b) background="yes";;
@@ -470,6 +471,11 @@ elif [ "$1" == "shell" ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
+    # Check if default ip for container is given
+    if [ "$DEFAULT_IP" ]; then
+        IP="--ip $DEFAULT_IP"
+    fi
+
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
         echo "${GREEN}Attaching to existing shell...${NC}" >&1
@@ -482,10 +488,10 @@ elif [ "$1" == "shell" ]; then
 
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new shell in background...${NC}" >&1
-            ARGS+=(docker run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(docker run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary container...${NC}" >&1
-            ARGS+=(docker run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(docker run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 
@@ -493,10 +499,11 @@ elif [ "$1" == "shell" ]; then
 elif [ "$1" == "root-shell" ]; then
     shift 1
 
-    while getopts e:n:v:b OPTION; do
+    while getopts e:n:i:v:b OPTION; do
         case $OPTION in
             e) EXPOSE_PORTS+=(${OPTARG});;
             n) DEFAULT_NETWORK=${OPTARG};;
+            i) DEFAULT_IP=${OPTARG};;
             v) IMAGE_VERSION=${OPTARG};;
             b) background="yes";;
             *) invalid_arguments_provided;;
@@ -512,6 +519,11 @@ elif [ "$1" == "root-shell" ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
+    # Check if default ip for container is given
+    if [ "$DEFAULT_IP" ]; then
+        IP="--ip $DEFAULT_IP"
+    fi
+
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
         echo "${GREEN}Attaching to existing shell as root...${NC}" >&1
@@ -524,10 +536,10 @@ elif [ "$1" == "root-shell" ]; then
 
         if [ "$background" == "yes" ]; then
             echo "${GREEN}Starting new shell in the background as root...${NC}" >&1
-            ARGS+=(docker run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(docker run -d -it --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         else
             echo "${GREEN}Starting new temporary shell as root...${NC}" >&1
-            ARGS+=(docker run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
+            ARGS+=(docker run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
 

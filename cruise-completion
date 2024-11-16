@@ -39,12 +39,12 @@ _cruise_autocomplete() {
             return 0
             ;;
         shell)
-            COMPREPLY=( -v -n -e -u -b )
+            COMPREPLY=( -v -n -i -e -u -b )
 
             return 0
             ;;
         root-shell)
-            COMPREPLY=( -v -n -e -b )
+            COMPREPLY=( -v -n -i -e -b )
 
             return 0
             ;;
