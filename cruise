@@ -633,7 +633,7 @@ elif [ "$1" == "traefik" ]; then
         # Check if user provided labels for the image
         # Skip default labels in this case
         if [ ! ${LABELS[@]} ]; then
-            TRAEFIK_ARGS="-l traefik.enable=true -l traefik.http.routers.${PWD##*/}.entrypoints=web -l traefik.http.services.${PWD##*/}.loadbalancer.server.port=${DEFAULT_PORT} -l traefik.http.routers.${PWD##*/}.rule=Host(\`${PWD##*/}.localhost\`)"
+            TRAEFIK_ARGS="-l traefik.enable=true -l traefik.http.routers.${PWD##*/}.entrypoints=http -l traefik.http.services.${PWD##*/}.loadbalancer.server.port=${DEFAULT_PORT} -l traefik.http.routers.${PWD##*/}.rule=Host(\`${PWD##*/}.localhost\`)"
         fi
 
         # Run the image with parameters...
