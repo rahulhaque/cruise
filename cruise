@@ -29,6 +29,11 @@ SHELL_USER=$DEFAULT_SHELL_USER
 SERVER="nginx"
 EXPOSE_PORTS=()
 
+# Source the ".cruise" file for environment variables...
+if [ -f ".cruise" ]; then
+    source ".cruise"
+fi
+
 # Determine if stdout is a terminal...
 if test -t 1; then
     # Determine if colors are supported...
@@ -156,6 +161,26 @@ function check_if_network_exists {
     fi
 }
 
+function check_if_config_file_exists {
+    # Check if .cruise config file exists in the project directory...
+    if [ -f ".cruise" ]; then
+        # Check if -v option is provided in command...
+        if [[ -n "$background" && -n "$IMAGE_VERSION" ]]; then
+            sed -i "s|^IMAGE_VERSION=.*|IMAGE_VERSION=$IMAGE_VERSION|" ".cruise"
+        fi
+        
+        echo "${GREEN}Loading environment from .cruise config file...${NC}" >&2
+
+        source ".cruise"
+    elif [ -n "$background" ]; then
+        cat <<EOL > ".cruise"
+IMAGE_VERSION="$IMAGE_VERSION"
+EOL
+        source ".cruise"
+
+        echo "${GREEN}Creating .cruise config file...${NC}" >&2
+    fi
+}
 
 ARGS=()
 
@@ -343,6 +368,7 @@ elif [ "$1" == "start" ]; then
 
     check_if_docker_running
     check_if_network_exists
+    check_if_config_file_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
@@ -404,6 +430,7 @@ elif [ "$1" == "stop" ]; then
 
     check_if_docker_running
     check_if_network_exists
+    check_if_config_file_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
@@ -435,6 +462,7 @@ elif [ "$1" == "restart" ]; then
 
     check_if_docker_running
     check_if_network_exists
+    check_if_config_file_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
@@ -466,6 +494,7 @@ elif [ "$1" == "shell" ]; then
 
     check_if_docker_running
     check_if_network_exists
+    check_if_config_file_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
@@ -512,6 +541,7 @@ elif [ "$1" == "root-shell" ]; then
 
     check_if_docker_running
     check_if_network_exists
+    check_if_config_file_exists
 
     ENTRYPOINT=bash
 
@@ -601,6 +631,7 @@ elif [ "$1" == "traefik" ]; then
 
     check_if_docker_running
     check_if_network_exists
+    check_if_config_file_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
@@ -659,6 +690,7 @@ elif [ "$1" == "code" ]; then
 
     check_if_docker_running
     check_if_network_exists
+    check_if_config_file_exists
 
     if [ $IMAGE_VERSION ]; then
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
