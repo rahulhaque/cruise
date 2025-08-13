@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+_traefik_autocomplete() {
+    local cursor prev_word commands options
+    COMPREPLY=()
+    cursor="${COMP_WORDS[COMP_CWORD]}"
+    prev_word="${COMP_WORDS[COMP_CWORD-1]}"
+    commands="start stop restart status version install uninstall"
+
+    case "${prev_word}" in
+        stop | uninstall)
+            COMPREPLY=( -f )
+            
+            return 0
+            ;;
+        start)
+            COMPREPLY=( -a -b )
+            
+            return 0
+            ;;
+        restart | status | version | install | uninstall | -f)
+            COMPREPLY=()
+
+            return 0
+            ;;
+        -a)
+            COMPREPLY=( -b )
+            
+            return 0
+            ;;
+        -b)
+            COMPREPLY=( -a )
+            
+            return 0
+            ;;
+        *)
+            COMPREPLY=( $(compgen -W "${commands}" -- ${cursor}) )
+            
+            return 0
+            ;;
+    esac
+}
+
+complete -F _traefik_autocomplete traefik

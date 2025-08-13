@@ -48,7 +48,12 @@ _cruise_autocomplete() {
 
             return 0
             ;;
-        environments | install | uninstall)
+        uninstall)
+            COMPREPLY=( -f )
+
+            return 0
+            ;;
+        environments | install | uninstall | -f)
             COMPREPLY=()
 
             return 0

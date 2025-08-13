@@ -1,0 +1,327 @@
+#!/usr/bin/env bash
+
+UNAMEOUT="$(uname -s)"
+
+# Verify operating system is supported...
+case "${UNAMEOUT}" in
+    Linux*)             MACHINE=linux;;
+    Darwin*)            MACHINE=mac;;
+    *)                  MACHINE="UNKNOWN"
+esac
+
+if [ "$MACHINE" == "UNKNOWN" ]; then
+    echo "Unsupported operating system [$(uname -s)]. Cruise supports macOS, Linux, and Windows (WSL2)." >&2
+
+    exit 1
+fi
+
+CRUISE_DIRECTORY="$HOME/.cruise"
+
+# Source the ".config" file for environment variables...
+if [ -f "$CRUISE_DIRECTORY/.config" ]; then
+    source "$CRUISE_DIRECTORY/.config"
+fi
+
+# Define global parameters...
+IMAGE_VERSION=$DEFAULT_IMAGE_VERSION
+CONTAINER_NAME=$TRAEFIK_CONTAINER_NAME_PATTERN
+SHELL_USER=$DEFAULT_SHELL_USER
+SERVER="nginx"
+EXPOSE_PORTS=()
+
+# Determine if stdout is a terminal...
+if test -t 1; then
+    # Determine if colors are supported...
+    ncolors=$(tput colors)
+
+    if test -n "$ncolors" && test "$ncolors" -ge 8; then
+        BOLD="$(tput bold)"
+        RED="$(tput setaf 1)"
+        GREEN="$(tput setaf 2)"
+        YELLOW="$(tput setaf 3)"
+        CYAN="$(tput setaf 6)"
+        NC="$(tput sgr0)"
+    fi
+fi
+
+# Function that prints the available commands...
+function display_help {
+    echo "Traefik"
+    echo
+    echo "${YELLOW}Usage:${NC}" >&2
+    echo "  traefik [command] [options] [arguments]"
+    echo
+    echo "${YELLOW}Commands:${NC}"
+    echo "  ${GREEN}start${NC}               Start traefik proxy"
+    echo "    ${BOLD}-a${NC}                 Autostart after login"
+    echo "    ${BOLD}-b${NC}                 Run in the background"
+    echo "  ${GREEN}stop${NC}                Stop traefik proxy"
+    echo "    ${BOLD}-f${NC}                 Stop traefik proxy and remove the container"
+    echo "  ${GREEN}restart${NC}             Restart traefik proxy"
+    echo "  ${GREEN}status${NC}              Show traefik proxy status"
+    echo "  ${GREEN}version${NC}             Show traefik version"
+    echo
+    echo "  ${GREEN}install${NC}             Install traefik binary"
+    echo "  ${GREEN}uninstall${NC}           Uninstall traefik binary"
+    echo "    ${BOLD}-f${NC}                 Stop traefik proxy, remove the container and uninstall binary"
+
+    exit 1
+}
+
+# Proxy the "help" command...
+if [ $# -gt 0 ]; then
+    if [ "$1" == "help" ] || [ "$1" == "-h" ] || [ "$1" == "-help" ] || [ "$1" == "--help" ]; then
+        display_help
+    fi
+else
+    display_help
+fi
+
+# Function that outputs Cruise is not running...
+function traefik_is_not_running {
+    echo "${YELLOW}Traefik is not running.${NC}" >&2
+    echo "${YELLOW}You may run Traefik using:${NC} ${GREEN}traefik start${NC}" >&2
+
+    exit 1
+}
+
+# Function that outputs Invalid arguments provided...
+function invalid_arguments_provided {
+    echo "${YELLOW}Invalid arguments provided.${NC}" >&2
+
+    exit 1
+}
+
+function check_if_docker_running {
+    # Ensure that Docker is running...
+    if ! docker info > /dev/null 2>&1; then
+        echo "${BOLD}Docker is not running.${NC}" >&2
+
+        exit 1
+    fi
+}
+
+function check_if_network_exists {
+    # Check if the network exist for the containers...
+    if [ ! "$(docker network ls | grep $DEFAULT_NETWORK)" ]; then
+        echo "${BOLD}Traefik network doesn't exist.${NC}" >&2
+        echo "${BOLD}Creating network $DEFAULT_NETWORK...${NC}" >&2
+
+        docker network create $DEFAULT_NETWORK
+
+        echo "${GREEN}Created network $DEFAULT_NETWORK.${NC}" >&2
+    fi
+}
+
+ARGS=()
+
+# Install traefik binary...
+if [ "$1" == "install" ]; then
+    shift 1
+
+    # Check if traefik binary is not installed...
+    if ! type traefik > /dev/null 2>&1; then
+        echo "${BOLD}Installing traefik binary...${NC}" >&2
+
+        check_if_docker_running
+        check_if_network_exists
+
+        sudo ln -sf "$CRUISE_DIRECTORY/traefik" /usr/local/bin/traefik
+        sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" /etc/bash_completion.d/traefik-completion
+
+        if [ -d "$HOME/.oh-my-zsh/custom" ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" $HOME/.oh-my-zsh/custom/traefik-completion.zsh
+        fi
+
+        if [ "$?" == 0 ]; then
+            echo "${GREEN}Installation successful!${NC}" >&1
+        else
+            echo "${RED}Installation failed!${NC}" >&2
+        fi
+    else
+        echo "${BOLD}Traefik binary is already installed.${NC}" >&2
+    fi
+
+    exit 1
+
+# Uninstall the application image and traefik binary...
+elif [ "$1" == "uninstall" ]; then
+    shift 1
+
+    echo "${YELLOW}Uninstall traefik binary from your system (y/n)?${NC}"
+    read confirm
+
+    while getopts f OPTION; do
+        case $OPTION in
+            f) full="yes";;
+            *) invalid_arguments_provided;;
+        esac
+    done    
+
+    if [ "$confirm" == "y" ]; then
+        # Check if full uninstall...
+        if [ "$full" == "yes" ]; then
+            # Check if there is already any container running with the same name...
+            if docker ps --filter "name=^${TRAEFIK_CONTAINER_NAME}$" --format '{{.Names}}' | grep -q "^${TRAEFIK_CONTAINER_NAME}$"; then
+                echo "${BOLD}Traefik proxy is running. Stopping and removing container...${NC}" >&1
+
+                docker rm -f $TRAEFIK_CONTAINER_NAME
+            fi
+        fi
+
+        # Check if traefik binary is already installed...
+        if type traefik > /dev/null 2>&1; then
+            echo "${BOLD}Traefik binary is found.${NC}" >&1
+            echo "${BOLD}Uninstalling traefik binary...${NC}" >&1
+
+            sudo rm /usr/local/bin/traefik
+            sudo rm /etc/bash_completion.d/traefik-completion
+            if [ -f "$HOME/.oh-my-zsh/custom/traefik-completion.zsh" ]; then
+                sudo rm "$HOME/.oh-my-zsh/custom/traefik-completion.zsh"
+            fi                
+
+            if [ "$?" == 0 ]; then
+                echo "${GREEN}Uninstall successful!${NC}" >&1
+            else
+                echo "${RED}Cannot uninstall binary. Manually remove the binary from '/usr/local/bin/traefik'${NC}" >&2
+            fi
+        else
+            echo "${BOLD}Traefik binary is not installed.${NC}" >&2
+        fi
+    else
+        echo "${GREEN}Uninstall cancelled!${NC}" >&1
+    fi
+
+    exit 1
+
+# Start the application container...
+elif [ "$1" == "start" ]; then
+    shift 1
+
+    while getopts ab OPTION; do
+        case $OPTION in
+            a) autostart="yes";;
+            b) background="yes";;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    check_if_docker_running
+    check_if_network_exists
+
+    # Check if there is already any container running with the same name...
+    if docker ps --filter "name=^${TRAEFIK_CONTAINER_NAME}$" --format '{{.Names}}' | grep -q "^${TRAEFIK_CONTAINER_NAME}$"; then
+        # If container is running, then bash into it...
+        echo "${GREEN}Traefik proxy is already running...${NC}" >&1
+        echo "${GREEN}Visit http://traefik.localhost to see dashboard.${NC}" >&1
+        exit 1
+    elif [ "$(docker ps -a | grep $TRAEFIK_CONTAINER_NAME)" ]; then
+        # If container exist, then start it...
+        echo "${GREEN}Starting existing traefik proxy...${NC}" >&1
+        echo "${GREEN}Visit http://traefik.localhost to see dashboard.${NC}" >&1
+        ARGS+=(docker start $TRAEFIK_CONTAINER_NAME)
+    else
+        # Check if autostart is enabled
+        if [ "$autostart" == "yes" ]; then
+            RESTART="--restart unless-stopped"
+        fi
+
+        # Run the image with parameters...
+        if [ "$background" == "yes" ]; then
+            echo "${GREEN}Starting traefik proxy in background...${NC}" >&1
+            echo "${GREEN}Visit http://traefik.localhost after successful start.${NC}" >&1
+            ARGS+=(docker run -d --name $TRAEFIK_CONTAINER_NAME -v /var/run/docker.sock:/var/run/docker.sock --cap-add=NET_ADMIN --net $DEFAULT_NETWORK -p 80:80 -l traefik.enable=true -l "traefik.http.routers.dashboard.rule=Host(\`traefik.localhost\`)" -l traefik.http.routers.dashboard.service=api@internal $RESTART traefik:v$TRAEFIK_VERSION --api.insecure=true --providers.docker=true --providers.docker.exposedbydefault=false --entrypoints.http.address=:80 --log.level=INFO)
+        else
+            echo "${GREEN}Starting traefik proxy...${NC}" >&1
+            echo "${GREEN}Visit http://traefik.localhost after successful start.${NC}" >&1
+            ARGS+=(docker run --rm --name $TRAEFIK_CONTAINER_NAME -v /var/run/docker.sock:/var/run/docker.sock --cap-add=NET_ADMIN --net $DEFAULT_NETWORK -p 80:80 -l traefik.enable=true -l "traefik.http.routers.dashboard.rule=Host(\`traefik.localhost\`)" -l traefik.http.routers.dashboard.service=api@internal traefik:v$TRAEFIK_VERSION --api.insecure=true --providers.docker=true --providers.docker.exposedbydefault=false --entrypoints.http.address=:80 --log.level=INFO)
+        fi
+    fi
+
+# Stop the application container...
+elif [ "$1" == "stop" ]; then
+    shift 1
+
+    while getopts f OPTION; do
+        case $OPTION in
+            f) full="yes";;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    check_if_docker_running
+    check_if_network_exists
+
+    # Remove the container if -f option provided
+    if [ "$full" == "yes" ]; then
+        ARGS+=(docker rm -f $TRAEFIK_CONTAINER_NAME)
+    else
+        # Check if there is already any container running with the same name...
+        if docker ps --filter "name=^${TRAEFIK_CONTAINER_NAME}$" --format '{{.Names}}' | grep -q "^${TRAEFIK_CONTAINER_NAME}$"; then
+            echo "${GREEN}Stopping running container...${NC}" >&1
+            ARGS+=(docker stop $TRAEFIK_CONTAINER_NAME)
+        else
+            traefik_is_not_running
+        fi
+    fi
+
+# Restart the application container...
+elif [ "$1" == "restart" ]; then
+    shift 1
+
+    check_if_docker_running
+    check_if_network_exists
+
+    # Check if there is already any container running with the same name...
+    if docker ps --filter "name=^${TRAEFIK_CONTAINER_NAME}$" --format '{{.Names}}' | grep -q "^${TRAEFIK_CONTAINER_NAME}$"; then
+        echo "${GREEN}Restarting running container...${NC}" >&1
+        ARGS+=(docker restart $TRAEFIK_CONTAINER_NAME)
+    else
+        traefik_is_not_running
+    fi
+
+# Show traefik container status...
+elif [ "$1" == "status" ]; then
+    shift 1
+
+    check_if_docker_running
+    check_if_network_exists
+
+    # Check if there is already any container running with the same name...
+    if docker ps --filter "name=^${TRAEFIK_CONTAINER_NAME}$" --format '{{.Names}}' | grep -q "^${TRAEFIK_CONTAINER_NAME}$"; then
+        # If container is running, then bash into it...
+        echo "${GREEN}Traefik proxy is already running...${NC}" >&1
+        exit 1
+    else
+        traefik_is_not_running
+    fi
+
+# Show traefik container status...
+elif [ "$1" == "version" ]; then
+    shift 1
+
+    check_if_docker_running
+    check_if_network_exists
+
+    echo "${GREEN}Traefik version $TRAEFIK_VERSION${NC}" >&1
+    exit 1
+
+# Pass unknown commands to the "docker" binary...
+else
+    invalid_arguments_provided
+fi
+
+# Print the generated docker command when debug is enabled...
+if [ "$CRUISE_DEBUG_ENABLED" == "yes" ]; then
+    echo "" >&1
+    echo "${YELLOW}Debug command:${NC} ${CYAN}${ARGS[@]}${NC}" >&1
+    echo "" >&1
+
+    # Stop execution if STOP_ON_DEBUG is enabled...
+    if [ "$STOP_ON_DEBUG" == "yes" ]; then
+        exit 1
+    fi
+fi
+
+# Run Docker with the defined arguments...
+"${ARGS[@]}"

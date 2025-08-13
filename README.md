@@ -20,6 +20,9 @@ git clone https://github.com/rahulhaque/laravel-cruise.git ~/.cruise
 # Install cruise by running `install` command
 ~/.cruise/cruise install
 
+# Install traefik by running `install` command
+~/.cruise/traefik install
+
 # Run `cruise` to see available commands and options
 # or press tab to see simple autocompletion
 cruise
@@ -27,11 +30,15 @@ cruise
 
 I suggest you go through the commands and options available for the first time to get a quick grasp of what is offered.
 
-Bash completion is added by default. If you're using `oh-my-zsh`, source the completion script by adding the below lines in `~/.zshrc`.
+Bash and Oh-my-zsh auto completion is added by default. If you're using something else, source the completion script by adding the below lines.
 
 ```bash
 if [ -f ~/.cruise/cruise-completion ]; then
     source ~/.cruise/cruise-completion
+fi
+
+if [ -f ~/.cruise/traefik-completion ]; then
+    source ~/.cruise/traefik-completion
 fi
 ```
 

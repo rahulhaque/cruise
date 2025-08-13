@@ -29,11 +29,6 @@ SHELL_USER=$DEFAULT_SHELL_USER
 SERVER="nginx"
 EXPOSE_PORTS=()
 
-# Source the ".cruise" file for environment variables...
-if [ -f ".cruise" ]; then
-    source ".cruise"
-fi
-
 # Determine if stdout is a terminal...
 if test -t 1; then
     # Determine if colors are supported...
@@ -54,9 +49,7 @@ function display_help {
     echo "Cruise"
     echo
     echo "${YELLOW}Usage:${NC}" >&2
-    echo "  cruise COMMAND [options] [arguments]"
-    echo
-    echo "Unknown commands are passed to the docker binary."
+    echo "  cruise [command] [options] [arguments]"
     echo
     echo "${YELLOW}Commands:${NC}"
     echo "  ${GREEN}environments${NC}        Show available environments to build"
@@ -112,6 +105,7 @@ function display_help {
     echo
     echo "  ${GREEN}install${NC}             Install cruise binary"
     echo "  ${GREEN}uninstall${NC}           Uninstall cruise binary"
+    echo "    ${BOLD}-f${NC}                 Stop cruise, remove the container and uninstall binary"
 
     exit 1
 }
@@ -196,7 +190,11 @@ if [ "$1" == "install" ]; then
         check_if_network_exists
 
         sudo ln -sf "$CRUISE_DIRECTORY/cruise" /usr/local/bin/cruise
-        sudo ln -sf "$CRUISE_DIRECTORY/cruise-completion" /etc/bash_completion.d/cruise-completion
+        sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" /etc/bash_completion.d/cruise-completion
+
+        if [ -d "$HOME/.oh-my-zsh/custom" ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" $HOME/.oh-my-zsh/custom/cruise-completion.zsh
+        fi
 
         if [ "$?" == 0 ]; then
             echo "${GREEN}Installation successful!${NC}" >&1
@@ -216,26 +214,32 @@ elif [ "$1" == "uninstall" ]; then
     echo "${YELLOW}Uninstall cruise binary from your system (y/n)?${NC}"
     read confirm
 
+    while getopts f OPTION; do
+        case $OPTION in
+            f) full="yes";;
+            *) invalid_arguments_provided;;
+        esac
+    done  
+
     if [ "$confirm" == "y" ]; then
         # Check if cruise binary is already installed...
         if type cruise > /dev/null 2>&1; then
-            # Check if cruise binary is installed...
-            if type cruise > /dev/null 2>&1 || [ "$fresh_install" ]; then
-                echo "${BOLD}Cruise binary is found.${NC}" >&1
-                echo "${BOLD}Uninstalling cruise binary...${NC}" >&1
+            echo "${BOLD}Cruise binary is found.${NC}" >&1
+            echo "${BOLD}Uninstalling cruise binary...${NC}" >&1
 
-                sudo rm /usr/local/bin/cruise
-                sudo rm /etc/bash_completion.d/cruise-completion
-                docker network rm $DEFAULT_NETWORK
+            sudo rm /usr/local/bin/cruise
+            sudo rm /etc/bash_completion.d/cruise-completion
+            if [ -f "$HOME/.oh-my-zsh/custom/cruise-completion.zsh" ]; then
+                sudo rm "$HOME/.oh-my-zsh/custom/cruise-completion.zsh"
+            fi  
 
-                if [ "$?" == 0 ]; then
-                    echo "${GREEN}Uninstall successful!${NC}" >&1
-                else
-                    echo "${RED}Cannot uninstall binary. Manually remove the binary from '/usr/local/bin/cruise'${NC}" >&2
-                fi
+            if [ "$?" == 0 ]; then
+                echo "${GREEN}Uninstall successful!${NC}" >&1
             else
-                echo "${BOLD}Cruise binary is not installed.${NC}" >&2
+                echo "${RED}Cannot uninstall binary. Manually remove the binary from '/usr/local/bin/cruise'${NC}" >&2
             fi
+        else
+            echo "${BOLD}Cruise binary is not installed.${NC}" >&2
         fi
     else
         echo "${GREEN}Uninstall cancelled!${NC}" >&1
@@ -713,7 +717,7 @@ elif [ "$1" == "code" ]; then
 
 # Pass unknown commands to the "docker" binary...
 else
-    ARGS+=("$@")
+    ARGS+=(docker "$@")
 fi
 
 # Print the generated docker command when debug is enabled...
