@@ -222,6 +222,20 @@ elif [ "$1" == "uninstall" ]; then
     done  
 
     if [ "$confirm" == "y" ]; then
+        # Check if full uninstall...
+        if [ "$full" == "yes" ]; then
+            # Check if there is already any container running with cruise...
+            CRUISE_CONTAINERS=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '[^-]+-cruise-[^-]+')
+
+            if [[ -n "$CRUISE_CONTAINERS" ]]; then
+                echo "${BOLD}Found running cruise containers. Stopping and removing...${NC}" >&1
+
+                docker rm -f $CRUISE_CONTAINERS
+            else
+                echo "${BOLD}No running cruise containers found.${NC}" >&1
+            fi
+        fi
+
         # Check if cruise binary is already installed...
         if type cruise > /dev/null 2>&1; then
             echo "${BOLD}Cruise binary is found.${NC}" >&1
