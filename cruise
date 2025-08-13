@@ -71,6 +71,7 @@ function display_help {
     echo "    ${BOLD}-f${NC}                 Stop the application and remove the container"
     echo "  ${GREEN}restart${NC}             Restart the application"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
+    echo "  ${GREEN}status${NC}              Show cruise status"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
@@ -224,9 +225,9 @@ elif [ "$1" == "uninstall" ]; then
     if [ "$confirm" == "y" ]; then
         # Check if full uninstall...
         if [ "$full" == "yes" ]; then
-            # Check if there is already any container running with cruise...
             CRUISE_CONTAINERS=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '[^-]+-cruise-[^-]+')
 
+            # Check if any cruise containers running...
             if [[ -n "$CRUISE_CONTAINERS" ]]; then
                 echo "${BOLD}Found running cruise containers. Stopping and removing...${NC}" >&1
 
@@ -493,6 +494,31 @@ elif [ "$1" == "restart" ]; then
     else
         cruise_is_not_running
     fi
+
+# Show all cruise application containers...
+elif [ "$1" == "status" ]; then
+    shift 1
+
+    check_if_docker_running
+    check_if_network_exists
+
+    echo "Debugging Enabled: ${BOLD}$CRUISE_DEBUG_ENABLED${NC}" >&2
+    echo "Stop On Debug: ${BOLD}$STOP_ON_DEBUG${NC}" >&2
+    echo "Default Image Version: ${BOLD}$DEFAULT_IMAGE_VERSION${NC}" >&2
+    echo "Default network: ${BOLD}$DEFAULT_NETWORK${NC}" >&2
+    echo "" >&2
+
+    CRUISE_CONTAINERS=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '[^-]+-cruise-[^-]+')
+
+    # Check if any cruise containers running...
+    if [[ -n "$CRUISE_CONTAINERS" ]]; then
+        echo "Found running cruise containers." >&1
+        echo "${GREEN}$CRUISE_CONTAINERS${NC}" >&1
+    else
+        echo "${BOLD}No running cruise containers found.${NC}" >&1
+    fi
+
+    exit 1
 
 # Initiate a user zsh shell within the application container...
 elif [ "$1" == "shell" ]; then
