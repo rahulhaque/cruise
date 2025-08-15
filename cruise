@@ -403,6 +403,7 @@ elif [ "$1" == "start" ]; then
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
         # If container is running, then bash into it...
+        echo "${GREEN}$CONTAINER_NAME is already running.${NC}" >&1
         echo "${GREEN}Attaching to existing container...${NC}" >&1
         ARGS+=(docker exec -u cruise -it $CONTAINER_NAME $ENTRYPOINT)
     elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
@@ -466,6 +467,7 @@ elif [ "$1" == "stop" ]; then
 
     # Remove the container if -f option provided
     if [ "$full" == "yes" ]; then
+        echo "${GREEN}Stopping and removing running container...${NC}" >&1
         ARGS+=(docker rm -f $CONTAINER_NAME)
     else
         # Check if there is already any container running with the same name...
@@ -513,11 +515,14 @@ elif [ "$1" == "status" ]; then
     check_if_docker_running
     check_if_network_exists
 
-    echo "Debugging Enabled: ${BOLD}$CRUISE_DEBUG_ENABLED${NC}" >&2
-    echo "Stop On Debug: ${BOLD}$STOP_ON_DEBUG${NC}" >&2
-    echo "Default Image Version: ${BOLD}$DEFAULT_IMAGE_VERSION${NC}" >&2
-    echo "Default network: ${BOLD}$DEFAULT_NETWORK${NC}" >&2
-    echo "" >&2
+    echo "Debugging Enabled: ${BOLD}$CRUISE_DEBUG_ENABLED${NC}" >&1
+    echo "Stop On Debug: ${BOLD}$STOP_ON_DEBUG${NC}" >&1
+    echo "Default Environment: ${BOLD}$DEFAULT_IMAGE_VERSION${NC}" >&1
+    echo "Default Network: ${BOLD}$DEFAULT_NETWORK${NC}" >&1
+    echo "" >&1
+    echo "Available Environments:" >&1
+    ls ~/.cruise/environments
+    echo "" >&1
 
     CRUISE_CONTAINERS=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '[^-]+-cruise-[^-]+')
 
