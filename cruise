@@ -157,23 +157,28 @@ function check_if_network_exists {
 }
 
 function check_if_config_file_exists {
+    # Check if .cruise config file missing and -b option is provided in command...
+    if [[ ! -f ".cruise" && -n "$background" ]]; then
+        cat <<EOL > ".cruise"
+IMAGE_VERSION=$IMAGE_VERSION
+EOL
+        source ".cruise"
+    fi
+    
+    # Check if -v option is provided in command...
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        sed -i "s|^IMAGE_VERSION=.*|IMAGE_VERSION=$NEW_IMAGE_VERSION|" ".cruise"
+
+        echo "${GREEN}Updating .cruise config file...${NC}" >&2
+
+        source ".cruise"
+    fi
+
     # Check if .cruise config file exists in the project directory...
-    if [ -f ".cruise" ]; then
-        # Check if -v option is provided in command...
-        if [[ -n "$background" && -n "$IMAGE_VERSION" ]]; then
-            sed -i "s|^IMAGE_VERSION=.*|IMAGE_VERSION=$IMAGE_VERSION|" ".cruise"
-        fi
-        
+    if [[ -f ".cruise" && -s ".cruise" ]]; then
         echo "${GREEN}Loading environment from .cruise config file...${NC}" >&2
 
         source ".cruise"
-    elif [ -n "$background" ]; then
-        cat <<EOL > ".cruise"
-IMAGE_VERSION="$IMAGE_VERSION"
-EOL
-        source ".cruise"
-
-        echo "${GREEN}Creating .cruise config file...${NC}" >&2
     fi
 }
 
@@ -268,7 +273,7 @@ elif [ "$1" == "build" ]; then
 
     while getopts v:f OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             f) fresh_install="--no-cache";; # Append --no-cache if provided
             *) invalid_arguments_provided;;
         esac
@@ -301,7 +306,7 @@ elif [ "$1" == "export" ]; then
 
     while getopts v: OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             *) invalid_arguments_provided;;
         esac
     done
@@ -351,7 +356,7 @@ elif [ "$1" == "remove" ]; then
 
     while getopts v:f OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             f) full="yes";;
             *) invalid_arguments_provided;;
         esac
@@ -372,7 +377,7 @@ elif [ "$1" == "start" ]; then
 
     while getopts v:n:i:p:e:s:c:l:b OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
             i) DEFAULT_IP=${OPTARG};;
             p) DEFAULT_PORT=${OPTARG};;
@@ -389,7 +394,9 @@ elif [ "$1" == "start" ]; then
     check_if_network_exists
     check_if_config_file_exists
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
@@ -441,7 +448,7 @@ elif [ "$1" == "stop" ]; then
 
     while getopts v:f OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             f) full="yes";;
             *) invalid_arguments_provided;;
         esac
@@ -451,7 +458,9 @@ elif [ "$1" == "stop" ]; then
     check_if_network_exists
     check_if_config_file_exists
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
@@ -474,7 +483,7 @@ elif [ "$1" == "restart" ]; then
 
     while getopts v: OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             *) invalid_arguments_provided;;
         esac
     done
@@ -483,7 +492,9 @@ elif [ "$1" == "restart" ]; then
     check_if_network_exists
     check_if_config_file_exists
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
@@ -530,7 +541,7 @@ elif [ "$1" == "shell" ]; then
             n) DEFAULT_NETWORK=${OPTARG};;
             i) DEFAULT_IP=${OPTARG};;
             u) SHELL_USER=${OPTARG};;
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             b) background="yes";;
             *) invalid_arguments_provided;;
         esac
@@ -540,7 +551,9 @@ elif [ "$1" == "shell" ]; then
     check_if_network_exists
     check_if_config_file_exists
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
@@ -577,7 +590,7 @@ elif [ "$1" == "root-shell" ]; then
             e) EXPOSE_PORTS+=(${OPTARG});;
             n) DEFAULT_NETWORK=${OPTARG};;
             i) DEFAULT_IP=${OPTARG};;
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             b) background="yes";;
             *) invalid_arguments_provided;;
         esac
@@ -589,7 +602,9 @@ elif [ "$1" == "root-shell" ]; then
 
     ENTRYPOINT=bash
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
@@ -623,7 +638,7 @@ elif [ "$1" == "create" ]; then
 
     while getopts v: OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             *) invalid_arguments_provided;;
         esac
     done
@@ -638,7 +653,9 @@ elif [ "$1" == "create" ]; then
         exit 1
     fi
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
@@ -660,7 +677,7 @@ elif [ "$1" == "traefik" ]; then
 
     while getopts v:n:i:p:e:s:c:l:b OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             n) DEFAULT_NETWORK=${OPTARG};;
             i) DEFAULT_IP=${OPTARG};;
             p) DEFAULT_PORT=${OPTARG};;
@@ -677,7 +694,9 @@ elif [ "$1" == "traefik" ]; then
     check_if_network_exists
     check_if_config_file_exists
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
@@ -727,7 +746,7 @@ elif [ "$1" == "code" ]; then
 
     while getopts v: OPTION; do
         case $OPTION in
-            v) IMAGE_VERSION=${OPTARG};;
+            v) NEW_IMAGE_VERSION=${OPTARG};;
             *) invalid_arguments_provided;;
         esac
     done
@@ -736,7 +755,9 @@ elif [ "$1" == "code" ]; then
     check_if_network_exists
     check_if_config_file_exists
 
-    if [ $IMAGE_VERSION ]; then
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$NEW_IMAGE_VERSION}
+    else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
 
