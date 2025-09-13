@@ -524,12 +524,18 @@ elif [ "$1" == "status" ]; then
     ls ~/.cruise/environments
     echo "" >&1
 
-    CRUISE_CONTAINERS=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -E '[^-]+-cruise-[^-]+')
+    CRUISE_CONTAINERS=$(docker ps --format '{{.Names}}' 2>/dev/null \
+    | grep -E '[^-]+-cruise-[^-]+' \
+    | while read -r name; do
+        networks=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s=%s " $k $v.IPAddress}}{{end}}' "$name")
+        echo "${CYAN}Name:${NC} ${GREEN}$name${NC} | ${CYAN}Network:${NC} ${YELLOW}$networks${NC}"
+        done
+    )
 
     # Check if any cruise containers running...
     if [[ -n "$CRUISE_CONTAINERS" ]]; then
         echo "Found running cruise containers." >&1
-        echo "${GREEN}$CRUISE_CONTAINERS${NC}" >&1
+        echo "$CRUISE_CONTAINERS" >&1
     else
         echo "${BOLD}No running cruise containers found.${NC}" >&1
     fi

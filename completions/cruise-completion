@@ -79,10 +79,13 @@ _cruise_autocomplete() {
             return 0
             ;;
         -f)
-            if [[ "${COMP_WORDS[@]}" = *build* ]]; then
-                COMPREPLY=( -v )
-            fi
-            
+            for keyword in build stop; do
+                if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
+                    COMPREPLY=( -v )
+                    break
+                fi
+            done
+
             return 0
             ;;
         -s)
