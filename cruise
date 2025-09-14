@@ -72,6 +72,8 @@ function display_help {
     echo "  ${GREEN}restart${NC}             Restart the application"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}status${NC}              Show cruise status"
+    echo "  ${GREEN}containers${NC}          Show running cruise containers"
+    echo "    ${BOLD}-a${NC}                 Show all cruise containers"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
@@ -508,7 +510,7 @@ elif [ "$1" == "restart" ]; then
         cruise_is_not_running
     fi
 
-# Show all cruise application containers...
+# Show cruise status...
 elif [ "$1" == "status" ]; then
     shift 1
 
@@ -524,17 +526,37 @@ elif [ "$1" == "status" ]; then
     ls ~/.cruise/environments
     echo "" >&1
 
-    CRUISE_CONTAINERS=$(docker ps --format '{{.Names}}' 2>/dev/null \
-    | grep -E '[^-]+-cruise-[^-]+' \
-    | while read -r name; do
-        networks=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s=%s " $k $v.IPAddress}}{{end}}' "$name")
-        echo "${CYAN}Name:${NC} ${GREEN}$name${NC} | ${CYAN}Network:${NC} ${YELLOW}$networks${NC}"
-        done
+    exit 1
+
+# Show cruise application containers...
+elif [ "$1" == "containers" ]; then
+    shift 1
+
+    while getopts a OPTION; do
+        case $OPTION in
+            a) show="-a";;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    check_if_docker_running
+    check_if_network_exists
+
+    CRUISE_CONTAINERS=$(
+        docker ps $show --format '{{.Names}}' 2>/dev/null \
+        | grep -E '[^-]+-cruise-[^-]+' \
+        | while read -r name; do
+            networks=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s=%s " $k $v.IPAddress}}{{end}}' "$name")
+            status=$(docker inspect -f '{{.State.Status}}' "$name")
+            echo "$status|${CYAN}Name:${NC} ${GREEN}$name${NC} | ${CYAN}Network:${NC} ${YELLOW}$networks${NC} | ${CYAN}Status:${NC} $status"
+        done \
+        | sort -t'|' -k1,1r \
+        | cut -d'|' -f2-
     )
 
     # Check if any cruise containers running...
     if [[ -n "$CRUISE_CONTAINERS" ]]; then
-        echo "Found running cruise containers." >&1
+        echo "Found cruise containers..." >&1
         echo "$CRUISE_CONTAINERS" >&1
     else
         echo "${BOLD}No running cruise containers found.${NC}" >&1

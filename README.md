@@ -26,6 +26,10 @@ git clone https://github.com/rahulhaque/laravel-cruise.git ~/.cruise
 # Run `cruise` to see available commands and options
 # or press tab to see simple autocompletion
 cruise
+
+# Run `traefik` to see available commands and options
+# or press tab to see simple autocompletion
+traefik
 ```
 
 I suggest you go through the commands and options available for the first time to get a quick grasp of what is offered.
@@ -41,8 +45,6 @@ if [ -f ~/.cruise/traefik-completion ]; then
     source ~/.cruise/traefik-completion
 fi
 ```
-
-Then run `omz reload` to load the new completion script.
 
 ## Building
 
@@ -79,12 +81,14 @@ cruise import ~/.cruise/backup/cruise-8.2.tar
 
 ## Usage
 
-I recommend using **Cruise** along with [Traefik](https://traefik.io/traefik/) proxy manager which will give you nice domain names for accessing your projects. If you don't know what Traefik is or heard the name for the first time, don't worry as I will guide you through the setup process. Install Traefik in a minute from this [gist](https://gist.github.com/rahulhaque/3801a0fbb5cb2b8f0f060a364f494cb7). Traefik will run in the background looking for any Cruise projects to be available to serve.
+I recommend using **Cruise** along with [Traefik](https://traefik.io/traefik/) proxy manager which will give you nice domain names for accessing your projects. If you don't know what Traefik is or heard the name for the first time, don't worry as I will guide you through the setup process. Install Traefik in a minute from [installation](#installation) section. Traefik will run in the background looking for any Cruise projects to be available to serve.
 
 ### 1. Creating New Laravel Project
 
 ```bash
-# Open terminal and create project with
+# Open terminal and check Cruise status
+cruise status
+
 # Cruise will take the default version
 # from `~/.cruise/.config` file
 # See available environments
