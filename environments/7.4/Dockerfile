@@ -45,7 +45,9 @@ RUN curl -L https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \
     && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /usr/share/keyrings/yarn.gpg >/dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
     && apt-get update \
-    && apt-get install -y yarn
+    && apt-get install -y yarn \
+    && mkdir -p ~/.npm-global/lib \
+    && mkdir -p ~/.npm-global/bin
 
 # Install Bangla and MS Fonts
 RUN mkdir -p /usr/share/fonts \
