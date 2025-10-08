@@ -85,6 +85,8 @@ function display_help {
     echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-b${NC}                 Run in the background"
+    echo "  ${GREEN}exec${NC}                Run an executable from inside the container"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}export${NC}              Backup a cruise image as .tar"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}import${NC}              Import a cruise image from provided path"
@@ -664,6 +666,38 @@ elif [ "$1" == "root-shell" ]; then
             ARGS+=(docker run -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK $IP ${EXPOSE_PORTS[@]/#/-p } --add-host host.docker.internal:host-gateway cruise-$IMAGE_VERSION:latest $ENTRYPOINT)
         fi
     fi
+
+# Run an executable from inside the container...
+elif [ "$1" == "exec" ]; then
+    shift 1
+
+    while getopts v: OPTION; do
+        case $OPTION in
+            v) NEW_IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    check_if_docker_running
+    check_if_network_exists
+
+    # Check if argument provided
+    if [ -z "$1" ]; then
+        echo "${RED}Executable name and parameters missing${NC}" >&2
+
+        exit 1
+    fi
+
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        IMAGE_VERSION=$NEW_IMAGE_VERSION
+    # Check if .cruise config file exists in the project directory...
+    elif [[ -f ".cruise" && -s ".cruise" ]]; then
+        echo "${GREEN}Loading environment from .cruise config file...${NC}" >&2
+
+        source ".cruise"
+    fi
+
+    ARGS+=(docker run -u $SHELL_USER -it --rm -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest ${@:$OPTIND})
 
 # Create a Laravel project...
 elif [ "$1" == "create" ]; then
