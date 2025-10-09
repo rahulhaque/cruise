@@ -92,7 +92,8 @@ function display_help {
     echo "  ${GREEN}import${NC}              Import a cruise image from provided path"
     echo "  ${GREEN}remove${NC}              Remove a built cruise image"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
-    echo "    ${BOLD}-f${NC}                 Force remove the container"
+    echo "    ${BOLD}-a${NC}                 Remove all dependent images"
+    echo "    ${BOLD}-f${NC}                 Force remove the image"
     echo "  ${GREEN}create${NC}              Create a Laravel project in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}traefik${NC}             Start the application in Traefik proxy"
@@ -156,7 +157,7 @@ function check_if_network_exists {
 
         docker network create $DEFAULT_NETWORK
 
-        echo "${GREEN}Created network $DEFAULT_NETWORK.${NC}" >&2
+        echo "${GREEN}Created network $DEFAULT_NETWORK.${NC}" >&1
     fi
 }
 
@@ -173,14 +174,14 @@ EOL
     if [ -n "$NEW_IMAGE_VERSION" ]; then
         sed -i "s|^IMAGE_VERSION=.*|IMAGE_VERSION=$NEW_IMAGE_VERSION|" ".cruise"
 
-        echo "${GREEN}Updating .cruise config file...${NC}" >&2
+        echo "${GREEN}Updating .cruise config file...${NC}" >&1
 
         source ".cruise"
     fi
 
     # Check if .cruise config file exists in the project directory...
     if [[ -f ".cruise" && -s ".cruise" ]]; then
-        echo "${GREEN}Loading environment from .cruise config file...${NC}" >&2
+        echo "${GREEN}Loading environment from .cruise config file...${NC}" >&1
 
         source ".cruise"
     fi
@@ -358,10 +359,11 @@ elif [ "$1" == "import" ]; then
 elif [ "$1" == "remove" ]; then
     shift 1
 
-    while getopts v:f OPTION; do
+    while getopts av:f OPTION; do
         case $OPTION in
             v) NEW_IMAGE_VERSION=${OPTARG};;
-            f) full="yes";;
+            a) all="yes";;
+            f) force="-f";;
             *) invalid_arguments_provided;;
         esac
     done
@@ -369,11 +371,29 @@ elif [ "$1" == "remove" ]; then
     check_if_docker_running
     check_if_network_exists
 
-    if [ "$full" == "yes" ]; then
-        ARGS+=(docker rmi -f cruise-$IMAGE_VERSION:latest)
-    else
-        ARGS+=(docker rmi cruise-$IMAGE_VERSION:latest)
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        IMAGE_VERSION=$NEW_IMAGE_VERSION
+    # Check if .cruise config file exists in the project directory...
+    elif [[ -f ".cruise" && -s ".cruise" ]]; then
+        echo "${GREEN}Loading environment from .cruise config file...${NC}" >&1
+
+        source ".cruise"
     fi
+
+    # Check if the user wants to remove all dependent images
+    if [ "$all" == "yes" ]; then
+        # Find all the containers using the image
+        DEPENDENT_CONTAINERS=$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -E "[^-]+-cruise-${IMAGE_VERSION}([^-]+)?")
+
+        if [ -n "$DEPENDENT_CONTAINERS" ]; then
+            echo "${GREEN}Dependent containers found for image:${NC} cruise-$IMAGE_VERSION:latest" >&1
+            echo "${GREEN}Stopping and removing dependent containers...${NC}" >&1
+
+            docker rm -f $DEPENDENT_CONTAINERS
+        fi
+    fi
+
+    ARGS+=(docker rmi $force cruise-$IMAGE_VERSION:latest)
 
 # Start the application container...
 elif [ "$1" == "start" ]; then
@@ -692,7 +712,7 @@ elif [ "$1" == "exec" ]; then
         IMAGE_VERSION=$NEW_IMAGE_VERSION
     # Check if .cruise config file exists in the project directory...
     elif [[ -f ".cruise" && -s ".cruise" ]]; then
-        echo "${GREEN}Loading environment from .cruise config file...${NC}" >&2
+        echo "${GREEN}Loading environment from .cruise config file...${NC}" >&1
 
         source ".cruise"
     fi

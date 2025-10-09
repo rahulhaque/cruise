@@ -45,9 +45,7 @@ RUN curl -L https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \
     && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /usr/share/keyrings/yarn.gpg >/dev/null \
     && echo "deb [signed-by=/usr/share/keyrings/yarn.gpg] https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
     && apt-get update \
-    && apt-get install -y yarn \
-    && mkdir -p ~/.npm-global/lib \
-    && mkdir -p ~/.npm-global/bin
+    && apt-get install -y yarn
 
 # Install Bangla and MS Fonts
 RUN mkdir -p /usr/share/fonts \
@@ -92,6 +90,8 @@ COPY $PHP_VERSION/nginx.octane.conf /etc/nginx/conf.d/octane.conf.bak
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php$PHP_VERSION \
     && groupadd --force -g $WWWGROUP cruise \
     && useradd -s /usr/bin/zsh --no-create-home --no-user-group -g $WWWGROUP -u $WWWUSER cruise \
+    && mkdir -p /home/cruise/.npm-global/lib \
+    && mkdir -p /home/cruise/.npm-global/bin \
     && chown -R $WWWUSER:$WWWGROUP /home/cruise \
     && rm /etc/nginx/sites-enabled/default \
     && sed -i 's/www-data;/cruise;/g' /etc/nginx/nginx.conf \

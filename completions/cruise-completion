@@ -8,6 +8,11 @@ _cruise_autocomplete() {
     commands="environments build start stop restart status containers shell root-shell exec export import remove create traefik code install uninstall"
 
     case "${prev_word}" in
+        remove)
+            COMPREPLY=( -v -a -f )
+            
+            return 0
+            ;;
         build | stop)
             COMPREPLY=( -v -f )
             
@@ -31,11 +36,6 @@ _cruise_autocomplete() {
         create | export | restart | code | exec)
             COMPREPLY=( -v )
             
-            return 0
-            ;;
-        remove)
-            COMPREPLY=( $(docker ps -a --format '{{.Names}}' | grep 'cruise') )
-
             return 0
             ;;
         shell)
@@ -64,7 +64,7 @@ _cruise_autocomplete() {
             return 0
             ;;
         -v)
-            for keyword in build stop start traefik create export restart code shell root-shell exec; do
+            for keyword in build stop start traefik create export restart code shell root-shell exec remove; do
                 if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
                     COMPREPLY=( $(ls "$HOME/.cruise/environments") )
                     break
