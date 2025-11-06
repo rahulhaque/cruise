@@ -5,7 +5,7 @@ _cruise_autocomplete() {
     COMPREPLY=()
     cursor="${COMP_WORDS[COMP_CWORD]}"
     prev_word="${COMP_WORDS[COMP_CWORD-1]}"
-    commands="environments build start stop restart status containers shell root-shell exec export import remove create traefik code install uninstall"
+    commands="environments build start stop restart status containers shell root-shell run export import remove create traefik code install uninstall"
 
     case "${prev_word}" in
         remove)
@@ -33,7 +33,7 @@ _cruise_autocomplete() {
             
             return 0
             ;;
-        create | export | restart | code | exec)
+        create | export | restart | code | run)
             COMPREPLY=( -v )
             
             return 0
@@ -64,7 +64,7 @@ _cruise_autocomplete() {
             return 0
             ;;
         -v)
-            for keyword in build stop start traefik create export restart code shell root-shell exec remove; do
+            for keyword in build stop start traefik create export restart code shell root-shell run remove; do
                 if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
                     COMPREPLY=( $(ls "$HOME/.cruise/environments") )
                     break

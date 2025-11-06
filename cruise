@@ -85,7 +85,7 @@ function display_help {
     echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
     echo "    ${BOLD}-e <port:port>${NC}     Specify local port to container port (i.e. 3000:3000)"
     echo "    ${BOLD}-b${NC}                 Run in the background"
-    echo "  ${GREEN}exec${NC}                Run an executable from inside the container"
+    echo "  ${GREEN}run${NC}                Run an executable from inside of the container"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}export${NC}              Backup a cruise image as .tar"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"

@@ -37,7 +37,8 @@ RUN apt-get update \
        php$PHP_VERSION-ldap \
        php$PHP_VERSION-msgpack php$PHP_VERSION-igbinary php$PHP_VERSION-redis \
        php$PHP_VERSION-pcov php$PHP_VERSION-xdebug \
-    && php -r "readfile('https://getcomposer.org/installer');" | php -- --install-dir=/usr/bin/ --filename=composer
+    && php -r "readfile('https://getcomposer.org/installer');" | php -- --install-dir=/usr/bin/ --filename=composer \
+    && composer global require laravel/installer
 
 # Install Node
 RUN curl -L https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \

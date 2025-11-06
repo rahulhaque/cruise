@@ -16,7 +16,7 @@ ENV PATH=$PATH:/home/cruise/.npm-global/bin
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Install PHP
+# Install PHP, Composer and Laravel Installer
 RUN apt-get update \
     && apt-get install -y gnupg gosu curl nano fontconfig nginx ca-certificates \
        zip unzip supervisor sqlite3 libcap2-bin libpng-dev python2 apt-utils \
@@ -37,7 +37,8 @@ RUN apt-get update \
        php$PHP_VERSION-ldap \
        php$PHP_VERSION-msgpack php$PHP_VERSION-igbinary php$PHP_VERSION-redis php$PHP_VERSION-swoole \
        php$PHP_VERSION-pcov php$PHP_VERSION-xdebug \
-    && php -r "readfile('https://getcomposer.org/installer');" | php -- --install-dir=/usr/bin/ --filename=composer
+    && php -r "readfile('https://getcomposer.org/installer');" | php -- --install-dir=/usr/bin/ --filename=composer \
+    && composer global require laravel/installer
 
 # Install Node
 RUN curl -L https://deb.nodesource.com/setup_$NODE_VERSION.x | bash - \
