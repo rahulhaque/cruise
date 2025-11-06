@@ -688,7 +688,7 @@ elif [ "$1" == "root-shell" ]; then
     fi
 
 # Run an executable from inside the container...
-elif [ "$1" == "exec" ]; then
+elif [ "$1" == "run" ]; then
     shift 1
 
     while getopts v: OPTION; do
