@@ -93,6 +93,8 @@ RUN setcap "cap_net_bind_service=+ep" /usr/bin/php$PHP_VERSION \
     && useradd -s /usr/bin/zsh --no-create-home --no-user-group -g $WWWGROUP -u $WWWUSER cruise \
     && mkdir -p /home/cruise/.npm-global/lib \
     && mkdir -p /home/cruise/.npm-global/bin \
+    && mkdir -p /home/cruise/.config \
+    && mv /root/.config/composer /home/cruise/.config/ \
     && chown -R $WWWUSER:$WWWGROUP /home/cruise \
     && rm /etc/nginx/sites-enabled/default \
     && sed -i 's/www-data;/cruise;/g' /etc/nginx/nginx.conf \
