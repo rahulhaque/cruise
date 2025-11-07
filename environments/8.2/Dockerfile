@@ -12,7 +12,9 @@ WORKDIR /var/www/html
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 ENV NPM_CONFIG_PREFIX=/home/cruise/.npm-global
+
 ENV PATH=$PATH:/home/cruise/.npm-global/bin
+ENV PATH=$PATH:/home/cruise/.config/composer/vendor/bin
 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
@@ -69,8 +71,8 @@ RUN apt-get install -y git zsh \
     && zsh -i -c 'omz theme set steeef' \
     && zsh -i -c 'omz plugin enable laravel composer zsh-autosuggestions' \
     && sed -i "/zstyle ':omz:update' mode disabled/s/^#\s*//" $HOME/.zshrc \
-    && sed -i "3 i export PATH=./vendor/bin:\$PATH" $HOME/.zshrc \
-    && sed -i "4 i export PATH=\$HOME/.config/composer/vendor/bin:\$PATH" $HOME/.zshrc
+    && sed -i "3 i export PATH=\$PATH:./vendor/bin" $HOME/.zshrc \
+    && sed -i "4 i export PATH=\$PATH:\$HOME/.config/composer/vendor/bin" $HOME/.zshrc
 
 # Clean any temporary files
 RUN apt-get -y autoremove \
