@@ -287,6 +287,10 @@ elif [ "$1" == "build" ]; then
     check_if_docker_running
     check_if_network_exists
 
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        IMAGE_VERSION=$NEW_IMAGE_VERSION
+    fi
+
     echo "${GREEN}Building image with following parameters...${NC}" >&1
     echo "${BOLD}v) $IMAGE_VERSION${NC}" >&1
     echo "${BOLD}f) $fresh_install${NC}" >&1
@@ -318,6 +322,10 @@ elif [ "$1" == "export" ]; then
 
     check_if_docker_running
     check_if_network_exists
+
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        IMAGE_VERSION=$NEW_IMAGE_VERSION
+    fi
 
     echo "${GREEN}Exporting image with following parameters...${NC}" >&1
     echo "${BOLD}v) $IMAGE_VERSION${NC}" >&1
