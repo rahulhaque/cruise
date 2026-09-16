@@ -1,124 +1,108 @@
 #!/usr/bin/env bash
 
 _cruise_autocomplete() {
-    local cursor prev_word commands options
+    local cur prev cmd flags w i commands
     COMPREPLY=()
-    cursor="${COMP_WORDS[COMP_CWORD]}"
-    prev_word="${COMP_WORDS[COMP_CWORD-1]}"
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
     commands="environments build start stop restart status containers shell root-shell run export import remove create traefik code install uninstall"
 
-    case "${prev_word}" in
-        remove)
-            COMPREPLY=( -v -a -f )
-            
-            return 0
-            ;;
-        build | stop)
-            COMPREPLY=( -v -f )
-            
-            return 0
-            ;;
-        start)
-            COMPREPLY=( -v -n -i -p -e -s -c -l -b )
-            
-            return 0
-            ;;
-        traefik)
-            COMPREPLY=( -v -n -i -p -e -s -c -l -b )
-            
-            return 0
-            ;;
-        import)
-            COMPREPLY=( $(compgen -f "${cursor}") )
-            
-            return 0
-            ;;
-        create | export | restart | code | run)
-            COMPREPLY=( -v )
-            
-            return 0
+    cmd=""
+    for ((i = 1; i < COMP_CWORD; i++)); do
+        w="${COMP_WORDS[i]}"
+        case " $commands " in
+            *" $w "*)
+                cmd="$w"
+                break
+                ;;
+        esac
+    done
+
+    case "$cmd" in
+        start | traefik)
+            flags="-v -n -i -p -e -s -c -l -b"
             ;;
         shell)
-            COMPREPLY=( -v -n -i -e -u -b )
-
-            return 0
+            flags="-v -n -i -e -u -b"
             ;;
         root-shell)
-            COMPREPLY=( -v -n -i -e -b )
-
-            return 0
+            flags="-v -n -i -e -b"
             ;;
-        uninstall)
-            COMPREPLY=( -f )
-
-            return 0
+        build | stop)
+            flags="-v -f"
             ;;
-        environments | status | install | uninstall | -f)
-            COMPREPLY=()
-
-            return 0
+        remove)
+            flags="-v -a -f"
+            ;;
+        create | export | restart | code | run)
+            flags="-v"
             ;;
         containers)
-            COMPREPLY=( -a )
-
-            return 0
+            flags="-a"
             ;;
-        -v)
-            for keyword in build stop start traefik create export restart code shell root-shell run remove; do
-                if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
-                    COMPREPLY=( $(ls "$HOME/.cruise/environments") )
-                    break
-                fi
-            done
-
-            return 0
-            ;;
-        -n)
-            for keyword in start traefik shell root-shell; do
-                if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
-                    COMPREPLY=( $(docker network ls --format "{{.Name}}") )
-                    break
-                fi
-            done
-
-            return 0
-            ;;
-        -f)
-            for keyword in build stop; do
-                if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
-                    COMPREPLY=( -v )
-                    break
-                fi
-            done
-
-            return 0
-            ;;
-        -s)
-            for keyword in start traefik; do
-                if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
-                    COMPREPLY=( nginx octane )
-                    break
-                fi
-            done
-            
-            return 0
-            ;;
-        -u)
-            for keyword in shell; do
-                if [[ "${COMP_WORDS[@]}" = *"$keyword"* ]]; then
-                    COMPREPLY=( cruise root )
-                    break
-                fi
-            done
-            
-            return 0
+        uninstall)
+            flags="-f"
             ;;
         *)
-            COMPREPLY=( $(compgen -W "${commands}" -- ${cursor}) )
-            
+            flags=""
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            COMPREPLY=( $(compgen -W "$flags" -- "$cur") )
             return 0
             ;;
     esac
+
+    case "$prev" in
+        -v)
+            if [[ -d "$HOME/.cruise/environments" ]]; then
+                COMPREPLY=( $(compgen -W "$(ls "$HOME/.cruise/environments" 2>/dev/null)" -- "$cur") )
+            fi
+            return 0
+            ;;
+        -n)
+            case "$cmd" in
+                start | traefik | shell | root-shell)
+                    COMPREPLY=( $(compgen -W "$(docker network ls --format '{{.Name}}' 2>/dev/null)" -- "$cur") )
+                    ;;
+            esac
+            return 0
+            ;;
+        -s)
+            case "$cmd" in
+                start | traefik)
+                    COMPREPLY=( $(compgen -W "nginx octane" -- "$cur") )
+                    ;;
+            esac
+            return 0
+            ;;
+        -u)
+            case "$cmd" in
+                shell)
+                    COMPREPLY=( $(compgen -W "cruise root" -- "$cur") )
+                    ;;
+            esac
+            return 0
+            ;;
+        -i | -p | -e | -c | -l)
+            return 0
+            ;;
+    esac
+
+    if [[ "$cmd" == "import" ]]; then
+        COMPREPLY=( $(compgen -f -- "$cur") )
+        return 0
+    fi
+
+    if [[ -n "$cmd" ]]; then
+        COMPREPLY=( $(compgen -W "$flags" -- "$cur") )
+    elif [[ "$prev" != -* ]]; then
+        COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
+    fi
+
+    return 0
 }
 
 complete -F _cruise_autocomplete cruise

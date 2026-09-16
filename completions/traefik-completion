@@ -1,44 +1,49 @@
 #!/usr/bin/env bash
 
 _traefik_autocomplete() {
-    local cursor prev_word commands options
+    local cur prev cmd flags w i commands
     COMPREPLY=()
-    cursor="${COMP_WORDS[COMP_CWORD]}"
-    prev_word="${COMP_WORDS[COMP_CWORD-1]}"
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
     commands="start stop restart status version install uninstall"
 
-    case "${prev_word}" in
-        stop | uninstall)
-            COMPREPLY=( -f )
-            
-            return 0
-            ;;
-        start)
-            COMPREPLY=( -a -b )
-            
-            return 0
-            ;;
-        restart | status | version | install | uninstall | -f)
-            COMPREPLY=()
+    cmd=""
+    for ((i = 1; i < COMP_CWORD; i++)); do
+        w="${COMP_WORDS[i]}"
+        case " $commands " in
+            *" $w "*)
+                cmd="$w"
+                break
+                ;;
+        esac
+    done
 
-            return 0
+    case "$cmd" in
+        start)
+            flags="-a -b"
             ;;
-        -a)
-            COMPREPLY=( -b )
-            
-            return 0
-            ;;
-        -b)
-            COMPREPLY=( -a )
-            
-            return 0
+        stop | uninstall)
+            flags="-f"
             ;;
         *)
-            COMPREPLY=( $(compgen -W "${commands}" -- ${cursor}) )
-            
+            flags=""
+            ;;
+    esac
+
+    case "$cur" in
+        -*)
+            COMPREPLY=( $(compgen -W "$flags" -- "$cur") )
             return 0
             ;;
     esac
+
+    if [[ -n "$cmd" ]]; then
+        COMPREPLY=( $(compgen -W "$flags" -- "$cur") )
+    elif [[ "$prev" != -* ]]; then
+        COMPREPLY=( $(compgen -W "$commands" -- "$cur") )
+    fi
+
+    return 0
 }
 
 complete -F _traefik_autocomplete traefik
