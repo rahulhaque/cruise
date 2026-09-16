@@ -113,16 +113,16 @@ function display_help {
     echo "  ${GREEN}uninstall${NC}           Uninstall cruise binary"
     echo "    ${BOLD}-f${NC}                 Stop cruise, remove the container and uninstall binary"
 
-    exit 1
+    exit "${1:-1}"
 }
 
 # Proxy the "help" command...
 if [ $# -gt 0 ]; then
     if [ "$1" == "help" ] || [ "$1" == "-h" ] || [ "$1" == "-help" ] || [ "$1" == "--help" ]; then
-        display_help
+        display_help 0
     fi
 else
-    display_help
+    display_help 1
 fi
 
 # Function that outputs Cruise is not running...
@@ -172,7 +172,7 @@ EOL
     
     # Check if -v option is provided in command...
     if [ -n "$NEW_IMAGE_VERSION" ]; then
-        sed -i "s|^IMAGE_VERSION=.*|IMAGE_VERSION=$NEW_IMAGE_VERSION|" ".cruise"
+        sed -i.bak "s|^IMAGE_VERSION=.*|IMAGE_VERSION=$NEW_IMAGE_VERSION|" ".cruise" && rm -f ".cruise.bak"
 
         echo "${GREEN}Updating .cruise config file...${NC}" >&1
 
@@ -200,14 +200,31 @@ if [ "$1" == "install" ]; then
         check_if_docker_running
         check_if_network_exists
 
+        sudo mkdir -p /usr/local/bin
         sudo ln -sf "$CRUISE_DIRECTORY/cruise" /usr/local/bin/cruise
-        sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" /etc/bash_completion.d/cruise-completion
+        INSTALL_STATUS=$?
 
-        if [ -d "$HOME/.oh-my-zsh/custom" ]; then
-            sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" $HOME/.oh-my-zsh/custom/cruise-completion.zsh
+        # Bash completions: Homebrew prefix on macOS, /etc on Linux...
+        if [ -d /opt/homebrew/etc/bash_completion.d ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" /opt/homebrew/etc/bash_completion.d/cruise-completion
+        elif [ -d /usr/local/etc/bash_completion.d ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" /usr/local/etc/bash_completion.d/cruise-completion
+        elif [ "$MACHINE" == "mac" ]; then
+            echo "${YELLOW}Bash completions skipped. Run 'brew install bash-completion' and reinstall, or add 'source $CRUISE_DIRECTORY/completions/cruise-completion' to your ~/.bash_profile.${NC}" >&2
+        else
+            sudo mkdir -p /etc/bash_completion.d
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" /etc/bash_completion.d/cruise-completion
+
+            if [ $? -ne 0 ]; then
+                INSTALL_STATUS=1
+            fi
         fi
 
-        if [ "$?" == 0 ]; then
+        if [ -d "$HOME/.oh-my-zsh/custom" ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/cruise-completion" "$HOME/.oh-my-zsh/custom/cruise-completion.zsh"
+        fi
+
+        if [ "$INSTALL_STATUS" == 0 ]; then
             echo "${GREEN}Installation successful!${NC}" >&1
         else
             echo "${RED}Installation failed!${NC}" >&2
@@ -216,21 +233,21 @@ if [ "$1" == "install" ]; then
         echo "${BOLD}Cruise binary is already installed.${NC}" >&2
     fi
 
-    exit 1
+    exit 0
 
 # Uninstall the application image and cruise binary...
 elif [ "$1" == "uninstall" ]; then
     shift 1
-
-    echo "${YELLOW}Uninstall cruise binary from your system (y/n)?${NC}"
-    read confirm
 
     while getopts f OPTION; do
         case $OPTION in
             f) full="yes";;
             *) invalid_arguments_provided;;
         esac
-    done  
+    done
+
+    echo "${YELLOW}Uninstall cruise binary from your system (y/n)?${NC}"
+    read -r confirm
 
     if [ "$confirm" == "y" ]; then
         # Check if full uninstall...
@@ -252,13 +269,20 @@ elif [ "$1" == "uninstall" ]; then
             echo "${BOLD}Cruise binary is found.${NC}" >&1
             echo "${BOLD}Uninstalling cruise binary...${NC}" >&1
 
-            sudo rm /usr/local/bin/cruise
-            sudo rm /etc/bash_completion.d/cruise-completion
-            if [ -f "$HOME/.oh-my-zsh/custom/cruise-completion.zsh" ]; then
-                sudo rm "$HOME/.oh-my-zsh/custom/cruise-completion.zsh"
-            fi  
+            sudo rm -f /usr/local/bin/cruise
+            UNINSTALL_STATUS=$?
 
-            if [ "$?" == 0 ]; then
+            sudo rm -f /etc/bash_completion.d/cruise-completion /opt/homebrew/etc/bash_completion.d/cruise-completion /usr/local/etc/bash_completion.d/cruise-completion
+
+            if [ $? -ne 0 ]; then
+                UNINSTALL_STATUS=1
+            fi
+
+            if [ -f "$HOME/.oh-my-zsh/custom/cruise-completion.zsh" ]; then
+                sudo rm -f "$HOME/.oh-my-zsh/custom/cruise-completion.zsh"
+            fi
+
+            if [ "$UNINSTALL_STATUS" == 0 ]; then
                 echo "${GREEN}Uninstall successful!${NC}" >&1
             else
                 echo "${RED}Cannot uninstall binary. Manually remove the binary from '/usr/local/bin/cruise'${NC}" >&2
@@ -270,7 +294,7 @@ elif [ "$1" == "uninstall" ]; then
         echo "${GREEN}Uninstall cancelled!${NC}" >&1
     fi
 
-    exit 1
+    exit 0
 
 # Build the application image...
 elif [ "$1" == "build" ]; then
@@ -307,7 +331,7 @@ elif [ "$1" == "environments" ]; then
     ls ~/.cruise/environments
     echo "" >&1
 
-    exit 1
+    exit 0
 
 # Backup the application image for using offline...
 elif [ "$1" == "export" ]; then
@@ -329,12 +353,12 @@ elif [ "$1" == "export" ]; then
 
     echo "${GREEN}Exporting image with following parameters...${NC}" >&1
     echo "${BOLD}v) $IMAGE_VERSION${NC}" >&1
-    echo "${GREEN}Creating backup in ~/.cruise/backup/cruise-$IMAGE_VERSION.tar${NC}" >&1
+    echo "${GREEN}Creating backup in $CRUISE_DIRECTORY/backup/cruise-$IMAGE_VERSION.tar${NC}" >&1
     echo "${GREEN}Please wait..." >&1
     echo "" >&1
 
-    mkdir -p ~/.cruise/backup
-    ARGS+=(docker image save -o ~/.cruise/backup/cruise-$IMAGE_VERSION.tar cruise-$IMAGE_VERSION:latest)
+    mkdir -p "$CRUISE_DIRECTORY/backup"
+    ARGS+=(docker image save -o "$CRUISE_DIRECTORY/backup/cruise-$IMAGE_VERSION.tar" "cruise-$IMAGE_VERSION:latest")
 
 # Import backed up application image...
 elif [ "$1" == "import" ]; then
@@ -499,8 +523,13 @@ elif [ "$1" == "stop" ]; then
 
     # Remove the container if -f option provided
     if [ "$full" == "yes" ]; then
-        echo "${GREEN}Stopping and removing running container...${NC}" >&1
-        ARGS+=(docker rm -f $CONTAINER_NAME)
+        # Check if the container exists at all...
+        if [ "$(docker ps -a -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
+            echo "${GREEN}Stopping and removing running container...${NC}" >&1
+            ARGS+=(docker rm -f $CONTAINER_NAME)
+        else
+            cruise_is_not_running
+        fi
     else
         # Check if there is already any container running with the same name...
         if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
@@ -556,7 +585,7 @@ elif [ "$1" == "status" ]; then
     ls ~/.cruise/environments
     echo "" >&1
 
-    exit 1
+    exit 0
 
 # Show cruise application containers...
 elif [ "$1" == "containers" ]; then
@@ -592,7 +621,7 @@ elif [ "$1" == "containers" ]; then
         echo "${BOLD}No running cruise containers found.${NC}" >&1
     fi
 
-    exit 1
+    exit 0
 
 # Initiate a user zsh shell within the application container...
 elif [ "$1" == "shell" ]; then
@@ -725,7 +754,7 @@ elif [ "$1" == "run" ]; then
         source ".cruise"
     fi
 
-    ARGS+=(docker run -u $SHELL_USER -it --rm -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest ${@:$OPTIND})
+    ARGS+=(docker run -u $SHELL_USER -it --rm -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest "${@:$OPTIND}")
 
 # Create a Laravel project...
 elif [ "$1" == "create" ]; then
@@ -756,14 +785,14 @@ elif [ "$1" == "create" ]; then
 
     # Check if there is already any container running with the same name...
     if [ "$(docker ps -f name=$CONTAINER_NAME | grep $CONTAINER_NAME)" ]; then
-        ARGS+=(docker exec -it $CONTAINER_NAME composer create-project laravel/laravel ${@:$OPTIND:1})
+        ARGS+=(docker exec -it $CONTAINER_NAME composer create-project laravel/laravel "${@:$OPTIND}")
     else
         # Check if there is already container with same name
         if [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
             cruise_is_not_running
         fi
 
-        ARGS+=(docker run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel ${@:$OPTIND:1})
+        ARGS+=(docker run -u $SHELL_USER -it --rm --name $CONTAINER_NAME -v "${PWD}":$WORKING_DIRECTORY -w $WORKING_DIRECTORY --cap-add=NET_ADMIN --net $DEFAULT_NETWORK cruise-$IMAGE_VERSION:latest composer create-project laravel/laravel "${@:$OPTIND}")
     fi
 
 # Start the application container with Traefik support...
@@ -866,7 +895,14 @@ elif [ "$1" == "code" ]; then
     elif [ "$(docker ps -a | grep $CONTAINER_NAME)" ]; then
         # If container exist, then start it...
         echo "${GREEN}Starting existing container and attaching to it...${NC}" >&1
-        ARGS+=(docker start $CONTAINER_NAME) && (code --folder-uri vscode-remote://attached-container+$CONTAINER_HEX/var/www/html)
+
+        if docker start $CONTAINER_NAME > /dev/null; then
+            ARGS+=(code --folder-uri vscode-remote://attached-container+$CONTAINER_HEX/var/www/html)
+        else
+            echo "${RED}Failed to start container $CONTAINER_NAME${NC}" >&2
+
+            exit 1
+        fi
     else
         cruise_is_not_running
     fi

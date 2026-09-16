@@ -65,16 +65,16 @@ function display_help {
     echo "  ${GREEN}uninstall${NC}           Uninstall traefik binary"
     echo "    ${BOLD}-f${NC}                 Stop traefik proxy, remove the container and uninstall binary"
 
-    exit 1
+    exit "${1:-1}"
 }
 
 # Proxy the "help" command...
 if [ $# -gt 0 ]; then
     if [ "$1" == "help" ] || [ "$1" == "-h" ] || [ "$1" == "-help" ] || [ "$1" == "--help" ]; then
-        display_help
+        display_help 0
     fi
 else
-    display_help
+    display_help 1
 fi
 
 # Function that outputs Cruise is not running...
@@ -126,14 +126,31 @@ if [ "$1" == "install" ]; then
         check_if_docker_running
         check_if_network_exists
 
+        sudo mkdir -p /usr/local/bin
         sudo ln -sf "$CRUISE_DIRECTORY/traefik" /usr/local/bin/traefik
-        sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" /etc/bash_completion.d/traefik-completion
+        INSTALL_STATUS=$?
 
-        if [ -d "$HOME/.oh-my-zsh/custom" ]; then
-            sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" $HOME/.oh-my-zsh/custom/traefik-completion.zsh
+        # Bash completions: Homebrew prefix on macOS, /etc on Linux...
+        if [ -d /opt/homebrew/etc/bash_completion.d ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" /opt/homebrew/etc/bash_completion.d/traefik-completion
+        elif [ -d /usr/local/etc/bash_completion.d ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" /usr/local/etc/bash_completion.d/traefik-completion
+        elif [ "$MACHINE" == "mac" ]; then
+            echo "${YELLOW}Bash completions skipped. Run 'brew install bash-completion' and reinstall, or add 'source $CRUISE_DIRECTORY/completions/traefik-completion' to your ~/.bash_profile.${NC}" >&2
+        else
+            sudo mkdir -p /etc/bash_completion.d
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" /etc/bash_completion.d/traefik-completion
+
+            if [ $? -ne 0 ]; then
+                INSTALL_STATUS=1
+            fi
         fi
 
-        if [ "$?" == 0 ]; then
+        if [ -d "$HOME/.oh-my-zsh/custom" ]; then
+            sudo ln -sf "$CRUISE_DIRECTORY/completions/traefik-completion" "$HOME/.oh-my-zsh/custom/traefik-completion.zsh"
+        fi
+
+        if [ "$INSTALL_STATUS" == 0 ]; then
             echo "${GREEN}Installation successful!${NC}" >&1
         else
             echo "${RED}Installation failed!${NC}" >&2
@@ -142,21 +159,21 @@ if [ "$1" == "install" ]; then
         echo "${BOLD}Traefik binary is already installed.${NC}" >&2
     fi
 
-    exit 1
+    exit 0
 
 # Uninstall the application image and traefik binary...
 elif [ "$1" == "uninstall" ]; then
     shift 1
-
-    echo "${YELLOW}Uninstall traefik binary from your system (y/n)?${NC}"
-    read confirm
 
     while getopts f OPTION; do
         case $OPTION in
             f) full="yes";;
             *) invalid_arguments_provided;;
         esac
-    done    
+    done
+
+    echo "${YELLOW}Uninstall traefik binary from your system (y/n)?${NC}"
+    read -r confirm
 
     if [ "$confirm" == "y" ]; then
         # Check if full uninstall...
@@ -174,13 +191,20 @@ elif [ "$1" == "uninstall" ]; then
             echo "${BOLD}Traefik binary is found.${NC}" >&1
             echo "${BOLD}Uninstalling traefik binary...${NC}" >&1
 
-            sudo rm /usr/local/bin/traefik
-            sudo rm /etc/bash_completion.d/traefik-completion
-            if [ -f "$HOME/.oh-my-zsh/custom/traefik-completion.zsh" ]; then
-                sudo rm "$HOME/.oh-my-zsh/custom/traefik-completion.zsh"
-            fi                
+            sudo rm -f /usr/local/bin/traefik
+            UNINSTALL_STATUS=$?
 
-            if [ "$?" == 0 ]; then
+            sudo rm -f /etc/bash_completion.d/traefik-completion /opt/homebrew/etc/bash_completion.d/traefik-completion /usr/local/etc/bash_completion.d/traefik-completion
+
+            if [ $? -ne 0 ]; then
+                UNINSTALL_STATUS=1
+            fi
+
+            if [ -f "$HOME/.oh-my-zsh/custom/traefik-completion.zsh" ]; then
+                sudo rm -f "$HOME/.oh-my-zsh/custom/traefik-completion.zsh"
+            fi
+
+            if [ "$UNINSTALL_STATUS" == 0 ]; then
                 echo "${GREEN}Uninstall successful!${NC}" >&1
             else
                 echo "${RED}Cannot uninstall binary. Manually remove the binary from '/usr/local/bin/traefik'${NC}" >&2
@@ -192,7 +216,7 @@ elif [ "$1" == "uninstall" ]; then
         echo "${GREEN}Uninstall cancelled!${NC}" >&1
     fi
 
-    exit 1
+    exit 0
 
 # Start the application container...
 elif [ "$1" == "start" ]; then
@@ -214,7 +238,7 @@ elif [ "$1" == "start" ]; then
         # If container is running, then bash into it...
         echo "${GREEN}Traefik proxy is already running...${NC}" >&1
         echo "${GREEN}Visit http://traefik.localhost to see dashboard.${NC}" >&1
-        exit 1
+        exit 0
     elif [ "$(docker ps -a | grep $TRAEFIK_CONTAINER_NAME)" ]; then
         # If container exist, then start it...
         echo "${GREEN}Starting existing traefik proxy...${NC}" >&1
@@ -291,7 +315,7 @@ elif [ "$1" == "status" ]; then
     if docker ps --filter "name=^${TRAEFIK_CONTAINER_NAME}$" --format '{{.Names}}' | grep -q "^${TRAEFIK_CONTAINER_NAME}$"; then
         # If container is running, then bash into it...
         echo "${GREEN}Traefik proxy is already running...${NC}" >&1
-        exit 1
+        exit 0
     else
         traefik_is_not_running
     fi
@@ -304,7 +328,7 @@ elif [ "$1" == "version" ]; then
     check_if_network_exists
 
     echo "${GREEN}Traefik version $TRAEFIK_VERSION${NC}" >&1
-    exit 1
+    exit 0
 
 # Pass unknown commands to the "docker" binary...
 else
