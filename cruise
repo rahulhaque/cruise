@@ -169,7 +169,7 @@ IMAGE_VERSION=$IMAGE_VERSION
 EOL
         source ".cruise"
     fi
-    
+
     # Check if -v option is provided in command...
     if [ -n "$NEW_IMAGE_VERSION" ]; then
         sed -i.bak "s|^IMAGE_VERSION=.*|IMAGE_VERSION=$NEW_IMAGE_VERSION|" ".cruise" && rm -f ".cruise.bak"
@@ -185,6 +185,86 @@ EOL
 
         source ".cruise"
     fi
+}
+
+function configure_vscode_attach_config {
+    local CONFIG_VERSION="$1"
+
+    if [ -z "$CONFIG_VERSION" ]; then
+        echo "${YELLOW}No image version found, vscode attach config skipped...${NC}" >&2
+
+        return 1
+    fi
+
+    local EDITOR_DIRS
+    local APP_DIR WSL_USER_DIR USER_DIR CONFIG_FILE CONFIG_WORKSPACE
+
+    if [ "$MACHINE" == "mac" ]; then
+        EDITOR_DIRS=("$HOME/Library/Application Support/Code - Insiders" "$HOME/Library/Application Support/Code" "$HOME/Library/Application Support/VSCodium")
+    else
+        EDITOR_DIRS=("$HOME/.config/Code - Insiders" "$HOME/.config/Code" "$HOME/.config/VSCodium")
+
+        # WSL2: vscode runs on the windows host side...
+        if grep -qi microsoft /proc/version 2> /dev/null; then
+            for WSL_USER_DIR in /mnt/c/Users/*; do
+                test -d "$WSL_USER_DIR" || continue
+
+                EDITOR_DIRS+=("$WSL_USER_DIR/AppData/Roaming/Code - Insiders" "$WSL_USER_DIR/AppData/Roaming/Code" "$WSL_USER_DIR/AppData/Roaming/VSCodium")
+            done
+        fi
+    fi
+
+    # Prefer editors where the dev containers extension is already in use...
+    USER_DIR=""
+    for APP_DIR in "${EDITOR_DIRS[@]}"; do
+        if [ -d "$APP_DIR/User/globalStorage/ms-vscode-remote.remote-containers" ]; then
+            USER_DIR="$APP_DIR/User"
+            break
+        fi
+    done
+
+    # Fallback to the first existing editor config directory...
+    if [ -z "$USER_DIR" ]; then
+        for APP_DIR in "${EDITOR_DIRS[@]}"; do
+            if [ -d "$APP_DIR/User" ]; then
+                USER_DIR="$APP_DIR/User"
+                break
+            fi
+        done
+    fi
+
+    if [ -z "$USER_DIR" ]; then
+        echo "${YELLOW}Vscode config directory not found, attach config skipped...${NC}" >&2
+
+        return 1
+    fi
+
+    # Attached containers are configured per image, not by any project devcontainer.json...
+    CONFIG_FILE="$USER_DIR/globalStorage/ms-vscode-remote.remote-containers/imageConfigs/cruise-$CONFIG_VERSION%3alatest.json"
+    CONFIG_WORKSPACE=${WORKING_DIRECTORY:-/var/www/html}
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        mkdir -p "$USER_DIR/globalStorage/ms-vscode-remote.remote-containers/imageConfigs"
+
+        if printf '{\n\t"workspaceFolder": "%s",\n\t"remoteUser": "cruise"\n}\n' "$CONFIG_WORKSPACE" > "$CONFIG_FILE"; then
+            echo "${GREEN}Vscode attach config created for cruise user ($CONFIG_FILE)...${NC}" >&1
+        else
+            echo "${YELLOW}Failed to create vscode attach config ($CONFIG_FILE)...${NC}" >&2
+
+            return 1
+        fi
+    elif ! grep -q '"remoteUser"' "$CONFIG_FILE"; then
+        # Inject remote user without clobbering any manual configuration...
+        if awk '/^[ \t]*\{[ \t]*$/ && !inserted { print; printf "\t\"remoteUser\": \"cruise\",\n"; inserted = 1; next } { print }' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv -f "$CONFIG_FILE.tmp" "$CONFIG_FILE" && grep -q '"remoteUser"' "$CONFIG_FILE"; then
+            echo "${GREEN}Vscode attach config updated for cruise user ($CONFIG_FILE)...${NC}" >&1
+        else
+            rm -f "$CONFIG_FILE.tmp"
+
+            echo "${YELLOW}Vscode attach config ($CONFIG_FILE) needs \"remoteUser\": \"cruise\" manually...${NC}" >&2
+        fi
+    fi
+
+    return 0
 }
 
 ARGS=()
@@ -884,6 +964,9 @@ elif [ "$1" == "code" ]; then
     else
         CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
     fi
+
+    # Make sure vscode attaches as the cruise user instead of root...
+    configure_vscode_attach_config ${NEW_IMAGE_VERSION:-$IMAGE_VERSION}
 
     CONTAINER_HEX=$(echo -n "$CONTAINER_NAME" | od -A n -t x1 | sed 's/ *//g' | tr -d '\n')
 

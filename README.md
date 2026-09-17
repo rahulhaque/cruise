@@ -59,7 +59,7 @@ The Cruise environment versions are set to match major PHP versions for easy rec
 # available for you to build by running
 cruise environments
 
-# Build the preferred environment with -v option 
+# Build the preferred environment with -v option
 cruise build -v 8.2
 ```
 
@@ -239,7 +239,11 @@ cruise stop -f
 
 ## VsCode Integration
 
-There's high chance after running a project, you may want to use VsCode's remote desktop to code inside the docker container (use it as a dev container). To do this, just open VsCode, open all commands and look for `Dev Containers: Attach to running container`. After VsCode done installing its server, open all commands and look for `Dev Containers: Open Container Configuration File...` and paste the following.
+There's high chance after running a project, you may want to use VsCode's remote desktop to code inside the docker container (use it as a dev container). Just run `cruise code` and VsCode will open the project inside the container.
+
+From now on, `cruise code` automatically configures VsCode's Dev Containers attach configuration so that it connects as the `cruise` user instead of `root` - terminals, tasks and debugging all run as `cruise`.
+
+If you already customized the attach configuration manually (extensions, settings etc.), Cruise only adds the `remoteUser` and leaves the rest untouched. If you prefer the manual way - open all commands and look for `Dev Containers: Attach to running container`. After VsCode done installing its server, open all commands and look for `Dev Containers: Open Container Configuration File...` and paste the following.
 
 ```json
 {
