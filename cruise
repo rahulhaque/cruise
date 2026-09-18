@@ -74,6 +74,8 @@ function display_help {
     echo "  ${GREEN}status${NC}              Show cruise status"
     echo "  ${GREEN}containers${NC}          Show running cruise containers"
     echo "    ${BOLD}-a${NC}                 Show all cruise containers"
+    echo "  ${GREEN}check${NC}               Check project image and container status"
+    echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "  ${GREEN}shell${NC}               Start a shell in the folder"
     echo "    ${BOLD}-v <version>${NC}       Specify a version (Default: ${DEFAULT_IMAGE_VERSION})"
     echo "    ${BOLD}-n <network>${NC}       Specify a docker network (Default: ${DEFAULT_NETWORK})"
@@ -702,6 +704,117 @@ elif [ "$1" == "containers" ]; then
     fi
 
     exit 0
+
+# Check project cruise status...
+elif [ "$1" == "check" ]; then
+    shift 1
+
+    while getopts v: OPTION; do
+        case $OPTION in
+            v) NEW_IMAGE_VERSION=${OPTARG};;
+            *) invalid_arguments_provided;;
+        esac
+    done
+
+    check_if_docker_running
+
+    # Take version from -v, else .cruise config, else default...
+    VERSION_SOURCE="default"
+    if [ -n "$NEW_IMAGE_VERSION" ]; then
+        IMAGE_VERSION=$NEW_IMAGE_VERSION
+        VERSION_SOURCE="-v option"
+    elif [[ -f ".cruise" && -s ".cruise" ]]; then
+        source ".cruise"
+        VERSION_SOURCE=".cruise config file"
+    fi
+
+    CONTAINER_NAME=${CONTAINER_NAME/$DEFAULT_IMAGE_VERSION/$IMAGE_VERSION}
+
+    # Versions other than the default need -v for build/start/traefik to pick them up...
+    if [ "$IMAGE_VERSION" == "$DEFAULT_IMAGE_VERSION" ]; then
+        VERSION_FLAG=""
+    else
+        VERSION_FLAG=" -v $IMAGE_VERSION"
+    fi
+
+    # Everything below is read-only, nothing is created or started...
+    if docker network inspect "$DEFAULT_NETWORK" > /dev/null 2>&1; then
+        NETWORK_STATUS="${GREEN}exists${NC}"
+    else
+        NETWORK_STATUS="${YELLOW}not found${NC}"
+    fi
+
+    if docker image inspect "cruise-$IMAGE_VERSION:latest" > /dev/null 2>&1; then
+        IMAGE_STATUS="${GREEN}found${NC}"
+        IMAGE_FOUND="yes"
+    else
+        IMAGE_STATUS="${YELLOW}not found${NC}"
+        IMAGE_FOUND="no"
+    fi
+
+    CONTAINER_STATE=$(docker container inspect -f '{{.State.Status}}' "$CONTAINER_NAME" 2> /dev/null)
+
+    if [ "$CONTAINER_STATE" == "running" ]; then
+        CONTAINER_STATUS="${GREEN}running${NC}"
+    elif [ -n "$CONTAINER_STATE" ]; then
+        CONTAINER_STATUS="${YELLOW}$CONTAINER_STATE${NC}"
+    else
+        CONTAINER_STATUS="${YELLOW}not found${NC}"
+    fi
+
+    TRAEFIK_STATE=$(docker container inspect -f '{{.State.Status}}' "$TRAEFIK_CONTAINER_NAME" 2> /dev/null)
+
+    if [ -n "$TRAEFIK_STATE" ]; then
+        TRAEFIK_STATUS="${GREEN}$TRAEFIK_STATE${NC}"
+    else
+        TRAEFIK_STATUS="${YELLOW}not found${NC}"
+    fi
+
+    echo "Checking cruise status for project: ${BOLD}${PWD##*/}${NC}" >&1
+    echo "" >&1
+    echo "${CYAN}Config:${NC} $VERSION_SOURCE (${BOLD}IMAGE_VERSION=$IMAGE_VERSION${NC})" >&1
+    echo "${CYAN}Network:${NC} ${BOLD}$DEFAULT_NETWORK${NC} $NETWORK_STATUS" >&1
+    echo "${CYAN}Image:${NC} ${BOLD}cruise-$IMAGE_VERSION:latest${NC} $IMAGE_STATUS" >&1
+    echo "${CYAN}Container:${NC} ${BOLD}$CONTAINER_NAME${NC} $CONTAINER_STATUS" >&1
+
+    # Extra details for an existing container...
+    if [ -n "$CONTAINER_STATE" ]; then
+        CONTAINER_NETWORKS=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s=%s " $k $v.IPAddress}}{{end}}' "$CONTAINER_NAME" 2> /dev/null)
+        # Docker reports IPv4 and IPv6 bindings separately, keep one entry per published container port...
+        CONTAINER_PORTS=$(docker inspect -f '{{range $p, $b := .NetworkSettings.Ports}}{{range $x := $b}}{{printf "%s:%s->%s " $x.HostIp $x.HostPort $p}}{{end}}{{end}}' "$CONTAINER_NAME" 2> /dev/null | awk '{ out = ""; for (i = 1; i <= NF; i++) { match($i, /[^:]+->/); key = substr($i, RSTART); if (!(key in seen)) { seen[key] = 1; out = out (out == "" ? "" : " ") $i } } print out }')
+        CONTAINER_CREATED=$(docker inspect -f '{{.Created}}' "$CONTAINER_NAME" 2> /dev/null | cut -c1-19)
+
+        echo "  ${CYAN}Networks:${NC} $CONTAINER_NETWORKS" >&1
+        echo "  ${CYAN}Ports:${NC} ${CONTAINER_PORTS:-none}" >&1
+        echo "  ${CYAN}Created:${NC} $CONTAINER_CREATED" >&1
+    fi
+
+    echo "${CYAN}Traefik proxy:${NC} ${BOLD}$TRAEFIK_CONTAINER_NAME${NC} $TRAEFIK_STATUS" >&1
+
+    # Check if the version has a matching environment to build from...
+    if [ ! -d "$CRUISE_DIRECTORY/environments/$IMAGE_VERSION" ]; then
+        echo "" >&2
+        echo "${YELLOW}Warning: environment $IMAGE_VERSION not found in $CRUISE_DIRECTORY/environments, image build will fail.${NC}" >&2
+    fi
+
+    echo "" >&1
+    if [ "$CONTAINER_STATE" == "running" ]; then
+        echo "${GREEN}Suggested next step:${NC} cruise start$VERSION_FLAG or cruise traefik$VERSION_FLAG (will attach to the running container)" >&1
+
+        exit 0
+    elif [ -n "$CONTAINER_STATE" ]; then
+        echo "${GREEN}Suggested next step:${NC} cruise start$VERSION_FLAG (will start the existing container)" >&1
+
+        exit 1
+    elif [ "$IMAGE_FOUND" == "yes" ]; then
+        echo "${GREEN}Suggested next step:${NC} cruise start$VERSION_FLAG or cruise traefik$VERSION_FLAG (will create a new container)" >&1
+
+        exit 2
+    else
+        echo "${GREEN}Suggested next step:${NC} cruise build$VERSION_FLAG first, then cruise start$VERSION_FLAG or cruise traefik$VERSION_FLAG" >&1
+
+        exit 3
+    fi
 
 # Initiate a user zsh shell within the application container...
 elif [ "$1" == "shell" ]; then

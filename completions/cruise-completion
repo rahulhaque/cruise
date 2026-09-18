@@ -5,7 +5,7 @@ _cruise_autocomplete() {
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    commands="environments build start stop restart status containers shell root-shell run export import remove create traefik code install uninstall"
+    commands="environments build start stop restart status containers check shell root-shell run export import remove create traefik code install uninstall"
 
     cmd=""
     for ((i = 1; i < COMP_CWORD; i++)); do
@@ -34,7 +34,7 @@ _cruise_autocomplete() {
         remove)
             flags="-v -a -f"
             ;;
-        create | export | restart | code | run)
+        check | create | export | restart | code | run)
             flags="-v"
             ;;
         containers)
