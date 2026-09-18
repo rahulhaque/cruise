@@ -120,6 +120,10 @@ This will allow `cruise` to connect to your local MySQL, Redis or Mailpit setup 
 
 ```bash
 # Open a terminal in your project directory
+# Not sure what to run? Check the project's
+# image and container status in detail
+cruise check
+
 # To run the project with Nginx and proxy through Traefik.
 # If you have Traefik installed (recommended) and
 # keep running it in the background (`-b`)
@@ -151,8 +155,8 @@ cruise shell
 # temporary shell anytime
 
 # Try out the environment by running
-# `php -v`, `npm -v` etc. to
-# see if you're really in
+# `php -v`, `npm -v` etc. to see if
+# you're really inside the container
 composer
 
 # Logout from the shell
@@ -239,11 +243,9 @@ cruise stop -f
 
 ## VsCode Integration
 
-There's high chance after running a project, you may want to use VsCode's remote desktop to code inside the docker container (use it as a dev container). Just run `cruise code` and VsCode will open the project inside the container.
+There's high chance after running a project, you may want to use VsCode's remote desktop to code inside the docker container (dev container). Just run the `cruise code` command and VsCode will open the project inside the container with everything configured.
 
-From now on, `cruise code` automatically configures VsCode's Dev Containers attach configuration so that it connects as the `cruise` user instead of `root` - terminals, tasks and debugging all run as `cruise`.
-
-If you already customized the attach configuration manually (extensions, settings etc.), Cruise only adds the `remoteUser` and leaves the rest untouched. If you prefer the manual way - open all commands and look for `Dev Containers: Attach to running container`. After VsCode done installing its server, open all commands and look for `Dev Containers: Open Container Configuration File...` and paste the following.
+To do the above manually, open all commands and look for `Dev Containers: Attach to running container` and select your project's container. After VsCode done installing its server, open all commands and look for `Dev Containers: Open Container Configuration File...` and paste the following.
 
 ```json
 {
@@ -268,7 +270,7 @@ A very good default is provided out of the box to handle most Laravel, PHP, Node
 - Wkhtmltoimage (qt patched)
 - Oh-my-zsh with auto-suggestions plugin
 
-You can edit the dockerfile in `~/.cruise/environments/<versions>` directories to customize the setup. Then rebuild the image with force (`-f`) option like - `cruise build -v <version> -f`.
+You can edit the Dockerfile in `~/.cruise/environments/<versions>` directories to customize the setup. Then rebuild the image with force (`-f`) option like - `cruise build -v <version> -f`.
 
 ## Backstory
 
